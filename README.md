@@ -13,6 +13,7 @@ Podstawowe założenia dotyczące tego projektu znajdują się w pliku:
 "podstawoweZałożeniaAplikacjiTypuSerwer.pdf".
 
 Projekt aplikacji klienckiej znajduje się pod adresem:
+
 https://github.com/dlakin95/Public-Library-Management-System-Client-Application-
 
 Wykonawcy: Sebastian Łabuz
