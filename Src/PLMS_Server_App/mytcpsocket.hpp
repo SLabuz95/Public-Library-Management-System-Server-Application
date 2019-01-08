@@ -12,13 +12,18 @@
 
 #define RETURN_MESSAGE(json) ((QString("HTTP/1.1 200 OK\r\nContent-type: application/json\r\nContent-length: ") + QString::number(json.toJson().length()) + QString("\r\n\r\n") + json.toJson()).toUtf8())
 
+class App;
+class User;
+
 class MyTcpSocket{
 public:
     // Constructor
-    MyTcpSocket(QTcpSocket* tcpSocket);
+    MyTcpSocket(QTcpSocket* tcpSocket, App* app);
 
     // Destructor
     ~MyTcpSocket();
+
+    App* app = nullptr;
 
     QTcpSocket* tcpSocket = nullptr;
 
@@ -50,6 +55,7 @@ public:
     void setReadEnd(bool set);
     void process();
     bool checkCommand(QString&);
+    void processReadedUserFromFile(User&);
 
 };
 

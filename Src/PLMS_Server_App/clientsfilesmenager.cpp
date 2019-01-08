@@ -5,6 +5,9 @@
 #include"user.hpp"
 #include<QDebug>
 #include"filereadingstatenum.hpp"
+#include<QJsonObject>
+#include"filetypeenum.hpp"
+#include"mytcpsocket.hpp"
 
 ClientsFilesMenager::ClientsFilesMenager(App* parent)
     : parent(parent)
@@ -74,7 +77,7 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 4:
     {
         // Check USER_NAME
-        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_NAME, 4,USER_NAME);
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_NAME, 4,USER_NAME);
         // Check ...
 
         // End Of Check for 4 Signs
@@ -83,7 +86,7 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 7:
     {
         // Check USER_SURNAME
-        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_SURNAME, 7, USER_SURNAME);
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_SURNAME, 7, USER_SURNAME);
         // Check ...
 
         // End Of Check for 7 Signs
@@ -92,9 +95,9 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 8:
     {
         // Check USER_PASSWORD
-        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_PASSWORD, 8, USER_PASSWORD);
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_PASSWORD, 8, USER_PASSWORD);
         // Check USER_ID
-        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_ID, 8, USER_ID);
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_ID, 8, USER_ID);
         // Check ...
 
         // End Of Check for 8 Signs
@@ -103,7 +106,7 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 9:
     {
         // Check USER_FIRST_NAME
-        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_FIRST_NAME, 9, USER_FIRST_NAME);
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_FIRST_NAME, 9, USER_FIRST_NAME);
         // Check ...
 
         // End Of Check for 9 Signs
@@ -112,7 +115,7 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 10:
     {
         // Check USER_SECOND_NAME
-        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_SECOND_NAME, 10, USER_SECOND_NAME);
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_SECOND_NAME, 10, USER_SECOND_NAME);
         // Check ...
 
         // End Of Check for 10 Signs
@@ -158,7 +161,7 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
                 SERVER_MSG("--- Client File Read Failed ---");
                 return false;
             }
-        }while(!rules.check(&tempUser));
+        }while(!rules.check(tempUser));
         file.close();
         SERVER_MSG("--- Client File Read Success");
     }
@@ -262,3 +265,73 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
     }
 }
 
+
+
+void ClientsFilesMenager::addClient(User newUser, MyTcpSocket* newActualSocket){
+    actualSocket = newActualSocket;
+    writeClientsFile(newUser);
+}
+
+bool ClientsFilesMenager::writeClientsFile(User &user){
+    // Reading Rules for Write File
+    ReadFileRules readFileRules(FILE_TYPE_CLIENTS_FILE, parent);
+    QFile file(CLIENTS_FILE_NAME);
+    if(!file.exists()){
+        switch(restoreClientsFile()){
+        case 1: // No BackUp
+            if(!createClientsFile()) // Creating Error
+                return false;
+            break;
+        case 2: // Open File Error
+            return false;
+        default:    // Restored File
+            break;
+        }
+    }
+    QFile newFile(TEMP_FILE_NAME);
+    newFile.remove();
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){  // File Not Open Error
+        SERVER_MSG(CLIENTS_FILE_OPEN_ERROR_TEXT);
+        return false;
+    }else{
+        SERVER_MSG("--- Temp File Writing Start ---");
+        if(!newFile.open(QIODevice::WriteOnly | QIODevice::Text)){
+            SERVER_MSG(TEMP_FILE_OPEN_ERROR_TEXT);
+            file.close();
+            SERVER_MSG("--- Client File Closed");
+            return false;
+        }else{
+            User tempUser;
+            if(!readNextClient(tempUser, file))
+            {
+                file.close();
+                SERVER_MSG("--- Client File Read Failed ---");
+                return false; // READING ERROR
+            }
+            if(!tempUser.checkUser()){
+                // Fail of user check (Depends of command type)
+                file.close();
+                SERVER_MSG("--- Client File Read Failed ---");
+                return false;
+            }
+            while(!readFileRules.check(tempUser)){
+                if(!readNextClient(tempUser, file))
+                {
+                    file.close();
+                    SERVER_MSG("--- Client File Read Failed ---");
+                    return false; // READING ERROR
+                }
+                if(!tempUser.checkUser()){
+                    // Fail of user check (Depends of command type)
+                    file.close();
+                    SERVER_MSG("--- Client File Read Failed ---");
+                    return false;
+                }
+            }while(!readFileRules.check(tempUser, actualSocket));
+
+            newFile.close();
+        }
+        file.close();
+        SERVER_MSG("--- Temp File Write Success");
+    }
+}

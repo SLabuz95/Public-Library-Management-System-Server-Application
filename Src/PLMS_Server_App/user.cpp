@@ -4,7 +4,7 @@ User::User(){
 
 }
 
-User::User(QJsonObject&)
+User::User(QJsonObject jsonObj)
 {
 
 }
@@ -16,6 +16,10 @@ User::~User(){
 
 QString User::getUserName(){
     return userName;
+}
+
+unsigned long long User::getUserId(){
+    return userId;
 }
 
 void User::setParam(UserParameters userParam, QString value){

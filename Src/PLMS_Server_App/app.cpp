@@ -5,10 +5,10 @@
 #include<QTextCodec>
 
 App::App(int argc, char** argv)
-    : QCoreApplication (argc, argv), httpServer(this)/*, clientsFilesMenager(this)*/
+    : QCoreApplication (argc, argv), httpServer(this), clientsFilesMenager(this)
 {
     qDebug() << "Inicjalizacja serwera...\n";
-    //QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
 }
 
 App::~App(){
@@ -53,4 +53,8 @@ void App::readCharUtf8(QFile &file, QString &tempChar){
    }
    tempChar.clear();
    tempChar = QString(byteArr);
+}
+
+ClientsFilesMenager& App::getClientsFilesMenager(){
+    return clientsFilesMenager;
 }

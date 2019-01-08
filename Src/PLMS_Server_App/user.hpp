@@ -1,7 +1,7 @@
 #ifndef USER_HPP
 #define USER_HPP
 // ------------------ Macros --------------------------------------------
-
+#define USER_JSON_KEY_TEXT ("user")
 // Include macros
 //#include "mainmacros.hpp"
 
@@ -22,7 +22,7 @@ class User{
 public:
     // Constructor
     User();
-    User(QJsonObject&);
+    User(QJsonObject);
 
     // Destructor
     ~User();
@@ -49,9 +49,14 @@ public:
 
     // Get Functions
     QString getUserName();
+    unsigned long long getUserId();
+
 
     // Set Param by Name with QString and Enumerator
     void setParam(UserParameters userParam, QString value);
+
+    // Get string Value  of Param by Name
+    QString getParam(UserParameters userParam);
 };
 
 

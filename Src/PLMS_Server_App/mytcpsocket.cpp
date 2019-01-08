@@ -1,8 +1,10 @@
 #include"mytcpsocket.hpp"
 #include<QJsonObject>
 #include<QJsonDocument>
-MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket)
-    : tcpSocket(tcpSocket), msgType(NUMB_OF_MESSAGE_TYPES)
+#include"app.hpp"
+#include"user.hpp"
+MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket, App* app)
+    : tcpSocket(tcpSocket), msgType(NUMB_OF_MESSAGE_TYPES), app(app)
 {
 
 }
@@ -238,6 +240,13 @@ void MyTcpSocket::process(){
     // Process
     switch(cmdType){
     // _PH_ ADD COMMAND PROCESSING CODE IF NEED
+    case COMMAND_TYPE_CLIENT_REGISTER:
+        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }
+        app->getClientsFilesMenager().addClient(User(requestData.value(USER_JSON_KEY_TEXT).toObject()));
+
     default:
         break;
     }
@@ -246,5 +255,66 @@ void MyTcpSocket::process(){
 }
 
 bool MyTcpSocket::checkCommand(QString &cmd){
-    return true;
+    CHECK_PARAM_INIT;
+    switch(cmd.length()){
+    case 12:
+        // Check CLIENT_LOGIN
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_LOGIN_TEXT, 12);
+        if(i == 12){
+            cmdType = COMMAND_TYPE_CLIENT_LOGIN;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 15:
+        // Check CLIENT_REGISTER
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_REGISTER_TEXT, 15);
+        if(i == 15){
+            cmdType = COMMAND_TYPE_CLIENT_REGISTER;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 10:
+        // Check CLIENT_ADD
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_ADD_TEXT, 10);
+        if(i == 10){
+            cmdType = COMMAND_TYPE_CLIENT_ADD;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 11:
+        // Check CLIENT_EDIT
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_EDIT_TEXT, 11);
+        if(i == 11){
+            cmdType = COMMAND_TYPE_CLIENT_EDIT;
+            return  true;
+        }
+        // Check CLIENT_READ
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_READ_TEXT, 11);
+        if(i == 11){
+            cmdType = COMMAND_TYPE_CLIENT_READ;
+            return  true;
+        }
+        // Check ...
+
+        break;
+    case 13:
+        // Check CLIENT_REMOVE
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_REMOVE_TEXT, 13);
+        if(i == 13){
+            cmdType = COMMAND_TYPE_CLIENT_REMOVE;
+            return true;
+        }
+        // Check ...
+
+        break;
+    default:
+        break;
+    }
+    return false;
 }

@@ -21,6 +21,7 @@ class App;
 class User;
 class QJsonObject;
 class QFile;
+class MyTcpSocket;
 // ----------------------------------------------------------------------
 
 // Clients Filter Struct Definition
@@ -42,6 +43,7 @@ struct BooksFileFilter
 class ReadFileRules{
 public:
     // Constructor
+    ReadFileRules(FileType fileType, App* parent);
     ReadFileRules(QJsonObject& jsonObject, App* parent);
     ReadFileRules(QJsonObject& jsonObject, FileType fileType, App* parent);
 
@@ -59,13 +61,18 @@ private:
         BooksFileFilter *booksFileFilter;
     } fileTypeFilter;
 
+    uint numbOfFilters = 0;
     unsigned long long startIdPoint = 0;
 
+    bool maxDecrementing = false;
     uint maxRead = 1;
 
 public:
     //  Is Rule Finished?
     bool check(User&);
+    bool check(User&, MyTcpSocket*);
+
+    bool checkFilters(User&);
 
     // Get Functions
     App* getParent();
