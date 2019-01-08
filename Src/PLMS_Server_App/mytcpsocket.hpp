@@ -8,6 +8,7 @@
 #include"tcpsocketstat.hpp"
 #include"commandtype.hpp"
 #include<QJsonObject>
+#include<QJsonParseError>
 
 #define RETURN_MESSAGE(json) ((QString("HTTP/1.1 200 OK\r\nContent-type: application/json\r\nContent-length: ") + QString::number(json.toJson().length()) + QString("\r\n\r\n") + json.toJson()).toUtf8())
 
@@ -26,6 +27,8 @@ public:
     TcpSocketStat tcpSocketStat = TCP_SOCKET_DECODING;
 
     ReturnErrorType returnErrorType = RETURN_ERROR_NO_ERROR;
+
+    QJsonParseError jsonParseError;
 
     MessageType msgType;
 

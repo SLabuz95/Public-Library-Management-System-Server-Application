@@ -47,7 +47,6 @@ void MyTcpSocket::setMessageType(MessageType set){
 void MyTcpSocket::decodeRequest(QString msg){
     if(returnErrorType == RETURN_ERROR_NO_ERROR){
     int len = msg.length();
-    qDebug() << msg;
     if(len == 0)
         return;
     int i = 0;
@@ -184,7 +183,10 @@ void MyTcpSocket::decodeRequest(QString msg){
             if(i == len)
                 break;
             qDebug() << tempStr;
-            requestData = (QJsonDocument::fromJson((tempStr + "\n").toUtf8())).object();
+            requestData = (QJsonDocument::fromJson((tempStr + "\n").toUtf8(), &jsonParseError)).object();
+            if(jsonParseError.error != QJsonParseError::NoError){
+                returnErrorType = RETURN_ERROR_JSON_PARSE_ERROR;
+            }
             decodeStat = DECODING_FINISH;
         }
         break;
@@ -201,6 +203,14 @@ void MyTcpSocket::sendReturnMessage(){
     if(returnErrorType == RETURN_ERROR_NO_ERROR){
         switch(cmdType){
         // _PH_ ADD RETURN MESSAGE JSON TO WRITE (MODIFY jsonObj VARIABLE)
+        default:
+            break;
+        }
+    }else{
+        switch(returnErrorType){
+        case RETURN_ERROR_JSON_PARSE_ERROR:
+            jsonObj.insert(RETURN_ERROR_JSON_PARSE_ERROR_VARIABLE_TEXT, QJsonValue::fromVariant(jsonParseError.error));
+            break;
         default:
             break;
         }

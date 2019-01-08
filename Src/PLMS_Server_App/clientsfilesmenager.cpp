@@ -69,30 +69,21 @@ void ClientsFilesMenager::clearMemory(){
 }
 
 UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
-    QString tempStr;
-    uint i = 0;
+    CHECK_PARAM_INIT;
     switch(tempStr.length()){
     case 4:
     {
-            // Check USER_NAME
-            tempStr = USER_PARAMETERS_USER_NAME;
-            for(i = 0; i < 4; i++)
-                if(checkStr.at(i) != tempStr.at(i))
-                    break;
-            if(i == 4)  return USER_NAME;
-            // Check ...
+        // Check USER_NAME
+        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_NAME, 4,USER_NAME);
+        // Check ...
 
-            // End Of Check for 4 Signs
+        // End Of Check for 4 Signs
     }
     break;
     case 7:
     {
         // Check USER_SURNAME
-        tempStr = USER_PARAMETERS_USER_SURNAME;
-        for(i = 0; i < 7; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 7)  return USER_SURNAME;
+        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_SURNAME, 7, USER_SURNAME);
         // Check ...
 
         // End Of Check for 7 Signs
@@ -101,17 +92,10 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 8:
     {
         // Check USER_PASSWORD
-        tempStr = USER_PARAMETERS_USER_PASSWORD;
-        for(i = 0; i < 8; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 8)  return USER_PASSWORD;
+        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_PASSWORD, 8, USER_PASSWORD);
         // Check USER_ID
-        tempStr = USER_PARAMETERS_USER_ID;
-        for(i = 0; i < 8; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 8)  return USER_ID;
+        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_ID, 8, USER_ID);
+        // Check ...
 
         // End Of Check for 8 Signs
     }
@@ -119,11 +103,8 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 9:
     {
         // Check USER_FIRST_NAME
-        tempStr = USER_PARAMETERS_USER_FIRST_NAME;
-        for(i = 0; i < 9; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 9)  return USER_FIRST_NAME;
+        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_FIRST_NAME, 9, USER_FIRST_NAME);
+        // Check ...
 
         // End Of Check for 9 Signs
     }
@@ -131,11 +112,8 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 10:
     {
         // Check USER_SECOND_NAME
-        tempStr = USER_PARAMETERS_USER_SECOND_NAME;
-        for(i = 0; i < 10; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 10)  return USER_SECOND_NAME;
+        CHECK_PARAM(checkStr, USER_PARAMETERS_USER_SECOND_NAME, 10, USER_SECOND_NAME);
+        // Check ...
 
         // End Of Check for 10 Signs
     }
@@ -166,7 +144,7 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
     }else{
         // File Reading Depends of Reading Rules
         SERVER_MSG("--- Client File Reading Start ---");
-        User tempUser("Test");
+        User tempUser;
         do{
             if(!readNextClient(tempUser, file))
             {
@@ -174,8 +152,13 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
                 SERVER_MSG("--- Client File Read Failed ---");
                 return false; // READING ERROR
             }
-            // Sprawdz czy użytkownik ma poprawne dane z pomocą funkcji (ale co z tym zrobić) (chyba przekazać informację o uszkodzonych danych)
-        }while(!rules.checkRules(&tempUser));
+            if(!tempUser.checkUser()){
+                // Fail of user check (Depends of command type)
+                file.close();
+                SERVER_MSG("--- Client File Read Failed ---");
+                return false;
+            }
+        }while(!rules.check(&tempUser));
         file.close();
         SERVER_MSG("--- Client File Read Success");
     }
@@ -186,7 +169,7 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
     QString tempStr;
     FileReadingStat frs = FILE_READING_SEARCHING;
     UserParameters userParameter = USER_NUMB_OF_PARAMETERS;
-
+    tempUser = User();
     // Find next client
     bool stop = false;
     while(!stop){
