@@ -6,6 +6,7 @@
 #define TEMP_FILE_NAME (QString("temp"))
 #define CLIENTS_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"clients\" !!! -------------"))
 #define TEMP_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"temp\" !!! -------------"))
+
 // Include macros
 
 // ----------------------------------------------------------------------
@@ -48,16 +49,17 @@ private:
     uint8_t restoreClientsFile();
     void clearMemory();
     bool readNextClient(User&, QFile&);
+    bool writeNextClient(User&, QFile&);
     UserParameters checkUserParameters(QString&);
 
 public:
-    void addClient(User newUser, MyTcpSocket* newActualSocket);
+    void addClient(MyTcpSocket* newActualSocket);
     void editClient();
     void removeClient();
 
 private:
     bool readClientsFile(ReadFileRules& rules);
-    bool writeClientsFile(User& user);
+    bool writeClientsFile();
 
 };
 

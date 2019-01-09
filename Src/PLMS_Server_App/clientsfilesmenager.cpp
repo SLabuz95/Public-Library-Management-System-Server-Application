@@ -8,6 +8,7 @@
 #include<QJsonObject>
 #include"filetypeenum.hpp"
 #include"mytcpsocket.hpp"
+#include<QTextStream>
 
 ClientsFilesMenager::ClientsFilesMenager(App* parent)
     : parent(parent)
@@ -272,7 +273,7 @@ void ClientsFilesMenager::addClient(User newUser, MyTcpSocket* newActualSocket){
     writeClientsFile(newUser);
 }
 
-bool ClientsFilesMenager::writeClientsFile(User &user){
+bool ClientsFilesMenager::writeClientsFile(){
     // Reading Rules for Write File
     ReadFileRules readFileRules(FILE_TYPE_CLIENTS_FILE, parent);
     QFile file(CLIENTS_FILE_NAME);
@@ -302,19 +303,9 @@ bool ClientsFilesMenager::writeClientsFile(User &user){
             return false;
         }else{
             User tempUser;
-            if(!readNextClient(tempUser, file))
-            {
-                file.close();
-                SERVER_MSG("--- Client File Read Failed ---");
-                return false; // READING ERROR
-            }
-            if(!tempUser.checkUser()){
-                // Fail of user check (Depends of command type)
-                file.close();
-                SERVER_MSG("--- Client File Read Failed ---");
-                return false;
-            }
-            while(!readFileRules.check(tempUser)){
+            User requestUser(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toObject());
+            unsigned long long lastId = 0;
+            do{
                 if(!readNextClient(tempUser, file))
                 {
                     file.close();
@@ -327,11 +318,60 @@ bool ClientsFilesMenager::writeClientsFile(User &user){
                     SERVER_MSG("--- Client File Read Failed ---");
                     return false;
                 }
+                if(requestUser.getUserId() == 0){
+                    if(lastId + 1 < tempUser.getUserId()){
+                        requestUser.setUserId(lastId + 1);
+                        writeNextClient(requestUser, newFile);
+                    }else{
+                        if(tempUser.getUserId() == 0){
+                            requestUser.setUserId(lastId + 1);
+                            writeNextClient(requestUser, newFile);
+                        }
+                    }
+                    writeNextClient(tempUser, newFile);
+                    lastId = tempUser.getUserId();
+                }else{
+                    switch(actualSocket->getCmdType()){
+                    case COMMAND_TYPE_CLIENT_EDIT:
+                        if(requestUser.getUserId() == tempUser.getUserId()){
+                            writeNextClient(requestUser, newFile);
+                            requestUser.setParam(USER_ID, QString("0"));    // For Information Purpose (Catch Not Found User Error)
+                        }else {
+                            writeNextClient(tempUser, newFile);
+                        }
+                        break;
+                    case COMMAND_TYPE_CLIENT_REMOVE:
+                        if(requestUser.getUserId() == tempUser.getUserId()){
+                            requestUser.setParam(USER_ID, QString("0"));    // For Information Purpose (Catch Not Found User Error)
+                        }else{
+                            writeNextClient(tempUser, newFile);
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                }
             }while(!readFileRules.check(tempUser, actualSocket));
-
             newFile.close();
         }
         file.close();
         SERVER_MSG("--- Temp File Write Success");
     }
+}
+
+bool ClientsFilesMenager::writeNextClient(User &user, QFile &file){
+    QTextStream s(&file);
+    s << WRITE_PARAM_TO_FILE(user, USER_ID); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_NAME); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_PASSWORD); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_PESEL); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_FIRST_NAME); //*
+    if(!user.getParam(USER_SECOND_NAME).isEmpty())
+        s << WRITE_PARAM_TO_FILE(user, USER_SECOND_NAME);
+    s << WRITE_PARAM_TO_FILE(user, USER_SURNAME);
+
+    // END (DONT MODIFY)
+    s << WRITE_PARAM_TO_FILE(user, USER_END_PARAMETER_TOKEN);
+
+    return true;
 }

@@ -245,7 +245,7 @@ void MyTcpSocket::process(){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
             break;
         }
-        app->getClientsFilesMenager().addClient(User(requestData.value(USER_JSON_KEY_TEXT).toObject()));
+        app->getClientsFilesMenager().addClient(User(requestData.value(USER_JSON_KEY_TEXT).toObject()), this);
 
     default:
         break;
@@ -317,4 +317,17 @@ bool MyTcpSocket::checkCommand(QString &cmd){
         break;
     }
     return false;
+}
+
+void MyTcpSocket::processReadedUserFromFile(User &user){
+    switch(cmdType){
+    case COMMAND_TYPE_CLIENT_REGISTER:
+        break;
+    default:
+        break;
+    }
+}
+
+CommandType MyTcpSocket::getCmdType(){
+    return cmdType;
 }

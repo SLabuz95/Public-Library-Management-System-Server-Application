@@ -53,6 +53,7 @@ public:
     void decodeRequest(QString msg);
     void sendReturnMessage();
     void setReadEnd(bool set);
+    CommandType getCmdType();
     void process();
     bool checkCommand(QString&);
     void processReadedUserFromFile(User&);

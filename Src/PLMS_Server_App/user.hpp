@@ -2,6 +2,8 @@
 #define USER_HPP
 // ------------------ Macros --------------------------------------------
 #define USER_JSON_KEY_TEXT ("user")
+#define WRITE_PARAM_TO_FILE(userO, paramN) userO.getStrForFile(paramN).toUtf8()
+
 // Include macros
 //#include "mainmacros.hpp"
 
@@ -40,6 +42,8 @@ private:
     QString userSecondName; // Optional
     // User Surname
     QString userSurname;    //*
+    // User Pesel
+    QString userPesel;      //*
 
 
 public:
@@ -51,12 +55,18 @@ public:
     QString getUserName();
     unsigned long long getUserId();
 
+    // Set User Id
+    void setUserId(unsigned long long newUserId);
 
     // Set Param by Name with QString and Enumerator
     void setParam(UserParameters userParam, QString value);
 
     // Get string Value  of Param by Name
     QString getParam(UserParameters userParam);
+
+    // Get String for File
+    QString getStrForFile(UserParameters userParam);
+
 };
 
 
