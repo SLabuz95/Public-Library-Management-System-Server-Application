@@ -5,6 +5,10 @@
 #include"user.hpp"
 #include<QDebug>
 #include"filereadingstatenum.hpp"
+#include<QJsonObject>
+#include"filetypeenum.hpp"
+#include"mytcpsocket.hpp"
+#include<QTextStream>
 
 ClientsFilesMenager::ClientsFilesMenager(App* parent)
     : parent(parent)
@@ -27,9 +31,10 @@ bool ClientsFilesMenager::createClientsFile(){
     }else{
         QTextStream stream(&file);
         stream.setCodec("UTF-8");
-        stream << QString("\n").toUtf8();
+        stream << (QString(USER_PARAMETERS_USER_ID) + QString("=0\nend=\n")).toUtf8();
         file.close();
     }
+    SERVER_MSG(QString("Clients File Created"));
     return true;
 }
 
@@ -41,6 +46,7 @@ bool ClientsFilesMenager::createClientsFileBackUp(){
       SERVER_MSG(CLIENTS_FILE_OPEN_ERROR_TEXT);
       return false;
   }
+  SERVER_MSG(QString("Clients File BackUp Created"));
    return true;
 }
 
@@ -69,30 +75,37 @@ void ClientsFilesMenager::clearMemory(){
 }
 
 UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
-    QString tempStr;
-    uint i = 0;
-    switch(tempStr.length()){
+    CHECK_PARAM_INIT;
+    switch(checkStr.length()){
+    case 3:
+    {
+        // Check END_TOKEN
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_END_PARAMETER_TOKEN, 3, USER_END_PARAMETER_TOKEN);
+        // Check ...
+
+        // End of Check for 3 Signs
+    }
+        break;
     case 4:
     {
-            // Check USER_NAME
-            tempStr = USER_PARAMETERS_USER_NAME;
-            for(i = 0; i < 4; i++)
-                if(checkStr.at(i) != tempStr.at(i))
-                    break;
-            if(i == 4)  return USER_NAME;
-            // Check ...
+        // Check USER_NAME
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_NAME, 4,USER_NAME);
+        // Check ...
 
-            // End Of Check for 4 Signs
+        // End Of Check for 4 Signs
     }
     break;
+    case 5:
+        // Check USER_PESEL
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_PESEL, 5, USER_PESEL);
+        // Check ...
+
+        // End Of Check for 5 Signs
+        break;
     case 7:
     {
         // Check USER_SURNAME
-        tempStr = USER_PARAMETERS_USER_SURNAME;
-        for(i = 0; i < 7; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 7)  return USER_SURNAME;
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_SURNAME, 7, USER_SURNAME);
         // Check ...
 
         // End Of Check for 7 Signs
@@ -101,17 +114,10 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 8:
     {
         // Check USER_PASSWORD
-        tempStr = USER_PARAMETERS_USER_PASSWORD;
-        for(i = 0; i < 8; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 8)  return USER_PASSWORD;
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_PASSWORD, 8, USER_PASSWORD);
         // Check USER_ID
-        tempStr = USER_PARAMETERS_USER_ID;
-        for(i = 0; i < 8; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 8)  return USER_ID;
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_ID, 8, USER_ID);
+        // Check ...
 
         // End Of Check for 8 Signs
     }
@@ -119,11 +125,8 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 9:
     {
         // Check USER_FIRST_NAME
-        tempStr = USER_PARAMETERS_USER_FIRST_NAME;
-        for(i = 0; i < 9; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 9)  return USER_FIRST_NAME;
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_FIRST_NAME, 9, USER_FIRST_NAME);
+        // Check ...
 
         // End Of Check for 9 Signs
     }
@@ -131,11 +134,8 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     case 10:
     {
         // Check USER_SECOND_NAME
-        tempStr = USER_PARAMETERS_USER_SECOND_NAME;
-        for(i = 0; i < 10; i++)
-            if(checkStr.at(i) != tempStr.at(i))
-                break;
-        if(i == 10)  return USER_SECOND_NAME;
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_SECOND_NAME, 10, USER_SECOND_NAME);
+        // Check ...
 
         // End Of Check for 10 Signs
     }
@@ -166,7 +166,7 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
     }else{
         // File Reading Depends of Reading Rules
         SERVER_MSG("--- Client File Reading Start ---");
-        User tempUser("Test");
+        User tempUser;
         do{
             if(!readNextClient(tempUser, file))
             {
@@ -174,8 +174,13 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
                 SERVER_MSG("--- Client File Read Failed ---");
                 return false; // READING ERROR
             }
-            // Sprawdz czy użytkownik ma poprawne dane z pomocą funkcji (ale co z tym zrobić) (chyba przekazać informację o uszkodzonych danych)
-        }while(!rules.checkRules(&tempUser));
+            if(!tempUser.checkUserFromFile()){
+                // Fail of user check (Depends of command type)
+                file.close();
+                SERVER_MSG("--- Client File Read Failed ---");
+                return false;
+            }
+        }while(!rules.check(tempUser));
         file.close();
         SERVER_MSG("--- Client File Read Success");
     }
@@ -186,7 +191,7 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
     QString tempStr;
     FileReadingStat frs = FILE_READING_SEARCHING;
     UserParameters userParameter = USER_NUMB_OF_PARAMETERS;
-
+    tempUser = User();
     // Find next client
     bool stop = false;
     while(!stop){
@@ -221,6 +226,7 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
                         SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
                         SERVER_MSG("Clients file have corrupted parameter name");
                         /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
+                        return false;
                     }
                     // ---------------------
                     frs = FILE_READING_READING_VALUE;
@@ -237,16 +243,17 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
             {
                 // Check if speech marks, if not read as number (End with EndLineSign and check only digits)
                     if(tempChar == '"'){
-                        do{
+                        App::readCharUtf8(file, tempChar);
+                        while(tempChar != '"'){
+                        tempStr.append(tempChar);
                             if(file.atEnd()){ // CANT BE AT END IN THIS FUNCTION (FILE IS CORRUPTED, SERVER INTERNAL ERROR, SERVER PAUSE WORK)
                                 SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
                                 SERVER_MSG("Clients file end while reading clients parameters");
                                 /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
                                 return false;
                             }
-                            App::readCharUtf8(file, tempChar);
-                            tempStr.append(tempChar);
-                        }while(tempChar != '"');
+                            App::readCharUtf8(file, tempChar);                            
+                        }
                     }else{
                         do{
                             if(file.atEnd()){ // CANT BE AT END IN THIS FUNCTION (FILE IS CORRUPTED, SERVER INTERNAL ERROR, SERVER PAUSE WORK)
@@ -255,7 +262,6 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
                                 /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
                                 return false;
                             }
-                            App::readCharUtf8(file, tempChar);
                             if((tempChar.at(0).toLatin1() < 48 || tempChar.at(0).toLatin1() > 57)){
                                 if(tempChar != '\r'){
                                 SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
@@ -266,6 +272,7 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
                             }else{
                                 tempStr.append(tempChar);
                             }
+                            App::readCharUtf8(file, tempChar);
                         }while(tempChar != '\n');
                     }
                     tempUser.setParam(userParameter, tempStr);
@@ -279,3 +286,179 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
     }
 }
 
+
+
+void ClientsFilesMenager::addClient(MyTcpSocket* newActualSocket){
+    actualSocket = newActualSocket;
+    writeClientsFile();
+}
+
+bool ClientsFilesMenager::writeClientsFile(){
+    // Reading Rules for Write File
+    ReadFileRules readFileRules(FILE_TYPE_CLIENTS_FILE, parent);
+    QFile file(CLIENTS_FILE_NAME);
+    if(!file.exists()){
+        switch(restoreClientsFile()){
+        case 1: // No BackUp
+            if(!createClientsFile()) // Creating Error
+                return false;
+            break;
+        case 2: // Open File Error
+            return false;
+        default:    // Restored File
+            break;
+        }
+    }
+    bool userFound = false;
+    QFile newFile(TEMP_FILE_NAME);
+    newFile.remove();
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){  // File Not Open Error
+        SERVER_MSG(CLIENTS_FILE_OPEN_ERROR_TEXT);
+        return false;
+    }else{
+        SERVER_MSG("--- Temp File Writing Start ---");
+        if(!newFile.open(QIODevice::WriteOnly | QIODevice::Text)){
+            SERVER_MSG(TEMP_FILE_OPEN_ERROR_TEXT);
+            file.close();
+            SERVER_MSG("--- Client File Closed");
+            return false;
+        }else{
+            User tempUser;
+            User requestUser(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toObject());
+            unsigned long long lastId = 0;
+            do{
+                if(!readNextClient(tempUser, file))
+                {
+                    file.close();
+                    newFile.close();
+                    SERVER_MSG("--- Client File Read Failed ---");
+                    return false; // READING ERROR
+                }
+                if(!tempUser.checkUserFromFile()){
+                    // Fail of user check (Depends of command type)
+                    file.close();
+                    newFile.close();
+                    SERVER_MSG("--- Client File Read Failed ---");
+                    return false;
+                }
+
+                if(requestUser.getUserId() == 0){
+                    // Check if readed from file user have the same PESEL number as requestUser
+                    if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
+                        SERVER_MSG("There is a user with the same PESEL name");
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
+                    // Check if readed from file user have the same user name as requestUser
+                    if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
+                        SERVER_MSG("There is a user with the same user name");
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
+                    if(!userFound){
+                        if(lastId + 1 < tempUser.getUserId()){
+                            requestUser.setUserId(lastId + 1);
+                            writeNextClient(requestUser, newFile);
+                            userFound = true;
+                        }else{
+                            if(tempUser.getUserId() == 0){
+                                requestUser.setUserId(lastId + 1);
+                                writeNextClient(requestUser, newFile);
+                                userFound = true;
+                            }
+                        }
+                    }
+                    lastId = tempUser.getUserId();
+                    writeNextClient(tempUser, newFile);
+                }else{
+                    switch(actualSocket->getCmdType()){
+                    case COMMAND_TYPE_CLIENT_EDIT:
+                    if(!userFound){
+                        if(requestUser.getUserId() == tempUser.getUserId()){
+                            writeNextClient(requestUser, newFile);
+                            userFound = true;    // For Information Purpose (Catch Not Found User Error)
+                        }else {
+                            writeNextClient(tempUser, newFile);
+                        }
+                    }else{
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
+                        break;
+                    case COMMAND_TYPE_CLIENT_REMOVE:
+                    if(!userFound){
+                        if(requestUser.getUserId() == tempUser.getUserId()){
+                            requestUser.setParam(USER_ID, QString("0"));
+                            userFound = true;// For Information Purpose (Catch Not Found User Error)
+                        }else{
+                            writeNextClient(tempUser, newFile);
+                        }
+                    }else{
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }while(readFileRules.check(tempUser, actualSocket));
+            newFile.close();
+            if(!userFound){
+                actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to USER_NOT_FOUND
+                file.close();
+                SERVER_MSG("--- Client File Read Failed ---");
+                return true;
+            }
+        }
+        file.close();
+        if(!file.remove()){
+            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
+        if(!newFile.rename(CLIENTS_FILE_NAME)){
+            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
+        if(!createClientsFileBackUp()){
+            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
+        SERVER_MSG("--- Temp File Write Success");
+    }
+    return true;
+}
+
+bool ClientsFilesMenager::writeNextClient(User &user, QFile &file){
+    QTextStream s(&file);
+    if(user.getUserId() == 0){
+        s << WRITE_PARAM_TO_FILE(user, USER_ID); //*
+        // END (DONT MODIFY)
+        s << WRITE_PARAM_TO_FILE(user, USER_END_PARAMETER_TOKEN);
+        return  true;
+    }
+    s << WRITE_PARAM_TO_FILE(user, USER_ID); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_NAME); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_PASSWORD); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_PESEL); //*
+    s << WRITE_PARAM_TO_FILE(user, USER_FIRST_NAME); //*
+    if(!user.getParam(USER_SECOND_NAME).isEmpty())
+        s << WRITE_PARAM_TO_FILE(user, USER_SECOND_NAME);
+    s << WRITE_PARAM_TO_FILE(user, USER_SURNAME);
+
+    // END (DONT MODIFY)
+    s << WRITE_PARAM_TO_FILE(user, USER_END_PARAMETER_TOKEN);
+
+    return true;
+}

@@ -1,0 +1,8 @@
+#ifndef BOOKPARAMETERS_HPP
+#define BOOKPARAMETERS_HPP
+
+enum BookParameters{
+    BOOK_NUMB_OF_PARAMETERS
+};
+
+#endif // BOOKPARAMETERS_HPP

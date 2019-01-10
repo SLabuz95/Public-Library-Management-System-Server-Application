@@ -21,8 +21,7 @@ HttpServer::~HttpServer(){
 
 void HttpServer::myConnection(){
 
-    socket = new MyTcpSocket(server.nextPendingConnection());
-
+    socket = new MyTcpSocket(server.nextPendingConnection(), parent);
     socket->waitForReadyRead(100);
     do
     {

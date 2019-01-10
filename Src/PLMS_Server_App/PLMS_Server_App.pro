@@ -18,7 +18,6 @@ HEADERS += \
     httpserver.hpp \
     clientsfilesmenager.hpp \
     readfilerules.hpp \
-    readfilerulestypeenum.hpp \
     user.hpp \
     filereadingstatenum.hpp \
     userparametersenum.hpp \
@@ -27,4 +26,6 @@ HEADERS += \
     mytcpsocket.hpp \
     returnerrortype.hpp \
     tcpsocketstat.hpp \
-    commandtype.hpp
+    commandtype.hpp \
+    filetypeenum.hpp \
+    bookparameters.hpp

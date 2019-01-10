@@ -1,8 +1,10 @@
 #include"mytcpsocket.hpp"
 #include<QJsonObject>
 #include<QJsonDocument>
-MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket)
-    : tcpSocket(tcpSocket), msgType(NUMB_OF_MESSAGE_TYPES)
+#include"app.hpp"
+#include"user.hpp"
+MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket, App* app)
+    : tcpSocket(tcpSocket), msgType(NUMB_OF_MESSAGE_TYPES), app(app)
 {
 
 }
@@ -47,7 +49,6 @@ void MyTcpSocket::setMessageType(MessageType set){
 void MyTcpSocket::decodeRequest(QString msg){
     if(returnErrorType == RETURN_ERROR_NO_ERROR){
     int len = msg.length();
-    qDebug() << msg;
     if(len == 0)
         return;
     int i = 0;
@@ -95,7 +96,7 @@ void MyTcpSocket::decodeRequest(QString msg){
         }
         decodeStat = COMMAND_READ;
     }
-    // Fall-Throught
+    [[clang::fallthrough]];
     case COMMAND_READ:
     {
         tempStr.clear();
@@ -122,7 +123,7 @@ void MyTcpSocket::decodeRequest(QString msg){
             break;
         }
     }
-        // Fall-Throught
+    [[clang::fallthrough]];
     case CONTENT_TYPE_READ:
     {
         tempStr.clear();
@@ -163,6 +164,7 @@ void MyTcpSocket::decodeRequest(QString msg){
         }
         decodeStat = DATA_READ;
     }
+    [[clang::fallthrough]];
     case DATA_READ:
         {
             tempStr.clear();
@@ -183,8 +185,10 @@ void MyTcpSocket::decodeRequest(QString msg){
             }
             if(i == len)
                 break;
-            qDebug() << tempStr;
-            requestData = (QJsonDocument::fromJson((tempStr + "\n").toUtf8())).object();
+            requestData = (QJsonDocument::fromJson((tempStr + "\n").toUtf8(), &jsonParseError)).object();
+            if(jsonParseError.error != QJsonParseError::NoError){
+                returnErrorType = RETURN_ERROR_JSON_PARSE_ERROR;
+            }
             decodeStat = DECODING_FINISH;
         }
         break;
@@ -204,6 +208,14 @@ void MyTcpSocket::sendReturnMessage(){
         default:
             break;
         }
+    }else{
+        switch(returnErrorType){
+        case RETURN_ERROR_JSON_PARSE_ERROR:
+            jsonObj.insert(RETURN_ERROR_JSON_PARSE_ERROR_VARIABLE_TEXT, QJsonValue::fromVariant(jsonParseError.error));
+            break;
+        default:
+            break;
+        }
     }
     jsonDoc.setObject(jsonObj);
     tcpSocket->write(RETURN_MESSAGE(jsonDoc));
@@ -218,7 +230,7 @@ void MyTcpSocket::setReturnErrorType(ReturnErrorType set){
 void MyTcpSocket::process(){
     // Process Function Initialization
     // _PH_ FUNCTION WORK AT SERVER THREAT (REIMPLEMENT WHEN IMPLEMENT MULTI_THREAT APP)
-    if(decodeStat != DECODING_FINISH)
+    if(returnErrorType == RETURN_ERROR_NO_ERROR && decodeStat != DECODING_FINISH)
         returnErrorType = RETURN_ERROR_NOT_COMPLETE_HTTP_MSG;
     tcpSocketStat = TCP_SOCKET_PROCESSING;
     if(returnErrorType != RETURN_ERROR_NO_ERROR){
@@ -228,6 +240,20 @@ void MyTcpSocket::process(){
     // Process
     switch(cmdType){
     // _PH_ ADD COMMAND PROCESSING CODE IF NEED
+    case COMMAND_TYPE_CLIENT_REGISTER:
+        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }
+            {
+                User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
+                if(!user.checkUserParameters()){
+                    returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                    break;
+                }
+            }
+        app->getClientsFilesMenager().addClient(this);
+        break;
     default:
         break;
     }
@@ -236,5 +262,79 @@ void MyTcpSocket::process(){
 }
 
 bool MyTcpSocket::checkCommand(QString &cmd){
-    return true;
+    CHECK_PARAM_INIT;
+    switch(cmd.length()){
+    case 12:
+        // Check CLIENT_LOGIN
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_LOGIN_TEXT, 12);
+        if(i == 12){
+            cmdType = COMMAND_TYPE_CLIENT_LOGIN;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 15:
+        // Check CLIENT_REGISTER
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_REGISTER_TEXT, 15);
+        if(i == 15){
+            cmdType = COMMAND_TYPE_CLIENT_REGISTER;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 10:
+        // Check CLIENT_ADD
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_ADD_TEXT, 10);
+        if(i == 10){
+            cmdType = COMMAND_TYPE_CLIENT_ADD;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 11:
+        // Check CLIENT_EDIT
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_EDIT_TEXT, 11);
+        if(i == 11){
+            cmdType = COMMAND_TYPE_CLIENT_EDIT;
+            return  true;
+        }
+        // Check CLIENT_READ
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_READ_TEXT, 11);
+        if(i == 11){
+            cmdType = COMMAND_TYPE_CLIENT_READ;
+            return  true;
+        }
+        // Check ...
+
+        break;
+    case 13:
+        // Check CLIENT_REMOVE
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_REMOVE_TEXT, 13);
+        if(i == 13){
+            cmdType = COMMAND_TYPE_CLIENT_REMOVE;
+            return true;
+        }
+        // Check ...
+
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+void MyTcpSocket::processReadedUserFromFile(User &user){
+    switch(cmdType){
+    case COMMAND_TYPE_CLIENT_REGISTER:
+        break;
+    default:
+        break;
+    }
+}
+
+CommandType MyTcpSocket::getCmdType(){
+    return cmdType;
 }
