@@ -6,7 +6,7 @@ User::User(){
 
 User::User(QJsonObject jsonObj)
 {
-
+ readJson(jsonObj);
 }
 
 User::~User(){
@@ -57,23 +57,10 @@ void User::setUserId(unsigned long long newUserId){
     userId = newUserId;
 }
 
-bool User::checkUser(){
+bool User::checkUserFromFile(){
     if(userId == 0)
         return true;
-    // User Name
-    if(userName.isEmpty())
-        return false;
-    // User Password
-    if(userPassword.isEmpty())
-        return false;
-    // User First Name
-    if(userFirstName.isEmpty())
-        return false;
-    // User Surname
-    if(userSurname.isEmpty())
-        return false;
-
-    // _PH_ DONT DELETE THIS PH (Check All Params)
+    return checkUserParameters();
 }
 
 QString User::getParam(UserParameters userParam){
@@ -102,20 +89,59 @@ QString User::getStrForFile(UserParameters userParam){
     case USER_ID:
         return QString(USER_PARAMETERS_USER_ID) + QString("=") + QString::number(userId) + QString("\n");
     case USER_NAME:
-        return QString(USER_PARAMETERS_USER_NAME) + QString("=") + userName + QString("\n");
+        return QString(USER_PARAMETERS_USER_NAME) + QString("=\"") + userName + QString("\"\n");
     case USER_PESEL:
-        return QString(USER_PARAMETERS_USER_PESEL) + QString("=") + userPesel + QString("\n");
+        return QString(USER_PARAMETERS_USER_PESEL) + QString("=\"") + userPesel + QString("\"\n");
     case USER_SURNAME:
-        return QString(USER_PARAMETERS_USER_SURNAME) + QString("=") + userSurname + QString("\n");
+        return QString(USER_PARAMETERS_USER_SURNAME) + QString("=\"") + userSurname + QString("\"\n");
     case USER_PASSWORD:
-        return QString(USER_PARAMETERS_USER_PASSWORD) + QString("=") + userPassword + QString("\n");
+        return QString(USER_PARAMETERS_USER_PASSWORD) + QString("=\"") + userPassword + QString("\"\n");
     case USER_FIRST_NAME:
-        return QString(USER_PARAMETERS_USER_FIRST_NAME) + QString("=") + userFirstName + QString("\n");
+        return QString(USER_PARAMETERS_USER_FIRST_NAME) + QString("=\"") + userFirstName + QString("\"\n");
     case USER_SECOND_NAME:
-        return QString(USER_PARAMETERS_USER_SECOND_NAME) + QString("=") + userSecondName + QString("\n");
+        return QString(USER_PARAMETERS_USER_SECOND_NAME) + QString("=\"") + userSecondName + QString("\"\n");
     case USER_END_PARAMETER_TOKEN:
         return QString(USER_PARAMETERS_USER_END_PARAMETER_TOKEN) + QString("=\n");
     default:
         return QString();
     }
+}
+
+bool User::checkUserParameters(){
+    // User Name
+    if(userName.isEmpty())
+        return false;
+    // User Password
+    if(userPassword.isEmpty())
+        return false;
+    // User First Name
+    if(userFirstName.isEmpty())
+        return false;
+    // User Surname
+    if(userSurname.isEmpty())
+        return false;
+    // User Pesel
+    if(userPesel.isEmpty())
+        return false;
+
+    // _PH_ DONT DELETE THIS PH (Check All Params)
+    return  true;
+}
+
+
+void User::readJson(QJsonObject& o){
+    if(o.value(USER_PARAMETERS_USER_ID) != QJsonValue::Undefined)
+        userId = o.value(USER_PARAMETERS_USER_ID).toString().toULongLong();
+    if(o.value(USER_PARAMETERS_USER_NAME) != QJsonValue::Undefined)
+        userName = o.value(USER_PARAMETERS_USER_NAME).toString();
+    if(o.value(USER_PARAMETERS_USER_PASSWORD) != QJsonValue::Undefined)
+        userPassword = o.value(USER_PARAMETERS_USER_PASSWORD).toString();
+    if(o.value(USER_PARAMETERS_USER_PESEL) != QJsonValue::Undefined)
+        userPesel = o.value(USER_PARAMETERS_USER_PESEL).toString();
+    if(o.value(USER_PARAMETERS_USER_FIRST_NAME) != QJsonValue::Undefined)
+        userFirstName = o.value(USER_PARAMETERS_USER_FIRST_NAME).toString();
+    if(o.value(USER_PARAMETERS_USER_SECOND_NAME) != QJsonValue::Undefined)
+        userSecondName = o.value(USER_PARAMETERS_USER_SECOND_NAME).toString();
+    if(o.value(USER_PARAMETERS_USER_SURNAME) != QJsonValue::Undefined)
+        userSurname = o.value(USER_PARAMETERS_USER_SURNAME).toString();
 }

@@ -31,9 +31,10 @@ bool ClientsFilesMenager::createClientsFile(){
     }else{
         QTextStream stream(&file);
         stream.setCodec("UTF-8");
-        stream << QString("\n").toUtf8();
+        stream << (QString(USER_PARAMETERS_USER_ID) + QString("=0\nend=\n")).toUtf8();
         file.close();
     }
+    SERVER_MSG(QString("Clients File Created"));
     return true;
 }
 
@@ -45,6 +46,7 @@ bool ClientsFilesMenager::createClientsFileBackUp(){
       SERVER_MSG(CLIENTS_FILE_OPEN_ERROR_TEXT);
       return false;
   }
+  SERVER_MSG(QString("Clients File BackUp Created"));
    return true;
 }
 
@@ -74,7 +76,16 @@ void ClientsFilesMenager::clearMemory(){
 
 UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     CHECK_PARAM_INIT;
-    switch(tempStr.length()){
+    switch(checkStr.length()){
+    case 3:
+    {
+        // Check END_TOKEN
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_END_PARAMETER_TOKEN, 3, USER_END_PARAMETER_TOKEN);
+        // Check ...
+
+        // End of Check for 3 Signs
+    }
+        break;
     case 4:
     {
         // Check USER_NAME
@@ -84,6 +95,13 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
         // End Of Check for 4 Signs
     }
     break;
+    case 5:
+        // Check USER_PESEL
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_PESEL, 5, USER_PESEL);
+        // Check ...
+
+        // End Of Check for 5 Signs
+        break;
     case 7:
     {
         // Check USER_SURNAME
@@ -156,7 +174,7 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
                 SERVER_MSG("--- Client File Read Failed ---");
                 return false; // READING ERROR
             }
-            if(!tempUser.checkUser()){
+            if(!tempUser.checkUserFromFile()){
                 // Fail of user check (Depends of command type)
                 file.close();
                 SERVER_MSG("--- Client File Read Failed ---");
@@ -208,6 +226,7 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
                         SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
                         SERVER_MSG("Clients file have corrupted parameter name");
                         /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
+                        return false;
                     }
                     // ---------------------
                     frs = FILE_READING_READING_VALUE;
@@ -224,16 +243,17 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
             {
                 // Check if speech marks, if not read as number (End with EndLineSign and check only digits)
                     if(tempChar == '"'){
-                        do{
+                        App::readCharUtf8(file, tempChar);
+                        while(tempChar != '"'){
+                        tempStr.append(tempChar);
                             if(file.atEnd()){ // CANT BE AT END IN THIS FUNCTION (FILE IS CORRUPTED, SERVER INTERNAL ERROR, SERVER PAUSE WORK)
                                 SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
                                 SERVER_MSG("Clients file end while reading clients parameters");
                                 /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
                                 return false;
                             }
-                            App::readCharUtf8(file, tempChar);
-                            tempStr.append(tempChar);
-                        }while(tempChar != '"');
+                            App::readCharUtf8(file, tempChar);                            
+                        }
                     }else{
                         do{
                             if(file.atEnd()){ // CANT BE AT END IN THIS FUNCTION (FILE IS CORRUPTED, SERVER INTERNAL ERROR, SERVER PAUSE WORK)
@@ -242,7 +262,6 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
                                 /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
                                 return false;
                             }
-                            App::readCharUtf8(file, tempChar);
                             if((tempChar.at(0).toLatin1() < 48 || tempChar.at(0).toLatin1() > 57)){
                                 if(tempChar != '\r'){
                                 SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
@@ -253,6 +272,7 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
                             }else{
                                 tempStr.append(tempChar);
                             }
+                            App::readCharUtf8(file, tempChar);
                         }while(tempChar != '\n');
                     }
                     tempUser.setParam(userParameter, tempStr);
@@ -314,14 +334,31 @@ bool ClientsFilesMenager::writeClientsFile(){
                     SERVER_MSG("--- Client File Read Failed ---");
                     return false; // READING ERROR
                 }
-                if(!tempUser.checkUser()){
+                if(!tempUser.checkUserFromFile()){
                     // Fail of user check (Depends of command type)
                     file.close();
                     newFile.close();
                     SERVER_MSG("--- Client File Read Failed ---");
                     return false;
                 }
+
                 if(requestUser.getUserId() == 0){
+                    // Check if readed from file user have the same PESEL number as requestUser
+                    if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
+                        SERVER_MSG("There is a user with the same PESEL name");
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
+                    // Check if readed from file user have the same user name as requestUser
+                    if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
+                        SERVER_MSG("There is a user with the same user name");
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
                     if(!userFound){
                         if(lastId + 1 < tempUser.getUserId()){
                             requestUser.setUserId(lastId + 1);

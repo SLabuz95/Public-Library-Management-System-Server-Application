@@ -48,8 +48,8 @@ private:
 
 public:
 
-    // Check User have all required data
-    bool checkUser();
+    // Check User have all required data (function for file)
+    bool checkUserFromFile();
 
     // Get Functions
     QString getUserName();
@@ -67,6 +67,10 @@ public:
     // Get String for File
     QString getStrForFile(UserParameters userParam);
 
+    // Check user parameters (dont check clientId)
+    bool checkUserParameters();
+
+    void readJson(QJsonObject&);
 };
 
 

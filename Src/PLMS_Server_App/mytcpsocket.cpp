@@ -185,7 +185,6 @@ void MyTcpSocket::decodeRequest(QString msg){
             }
             if(i == len)
                 break;
-            qDebug() << tempStr;
             requestData = (QJsonDocument::fromJson((tempStr + "\n").toUtf8(), &jsonParseError)).object();
             if(jsonParseError.error != QJsonParseError::NoError){
                 returnErrorType = RETURN_ERROR_JSON_PARSE_ERROR;
@@ -231,7 +230,7 @@ void MyTcpSocket::setReturnErrorType(ReturnErrorType set){
 void MyTcpSocket::process(){
     // Process Function Initialization
     // _PH_ FUNCTION WORK AT SERVER THREAT (REIMPLEMENT WHEN IMPLEMENT MULTI_THREAT APP)
-    if(decodeStat != DECODING_FINISH)
+    if(returnErrorType == RETURN_ERROR_NO_ERROR && decodeStat != DECODING_FINISH)
         returnErrorType = RETURN_ERROR_NOT_COMPLETE_HTTP_MSG;
     tcpSocketStat = TCP_SOCKET_PROCESSING;
     if(returnErrorType != RETURN_ERROR_NO_ERROR){
@@ -246,8 +245,15 @@ void MyTcpSocket::process(){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
             break;
         }
+            {
+                User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
+                if(!user.checkUserParameters()){
+                    returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                    break;
+                }
+            }
         app->getClientsFilesMenager().addClient(this);
-
+        break;
     default:
         break;
     }
