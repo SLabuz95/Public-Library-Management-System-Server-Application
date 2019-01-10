@@ -58,6 +58,8 @@ void User::setUserId(unsigned long long newUserId){
 }
 
 bool User::checkUser(){
+    if(userId == 0)
+        return true;
     // User Name
     if(userName.isEmpty())
         return false;

@@ -268,9 +268,9 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
 
 
 
-void ClientsFilesMenager::addClient(User newUser, MyTcpSocket* newActualSocket){
+void ClientsFilesMenager::addClient(MyTcpSocket* newActualSocket){
     actualSocket = newActualSocket;
-    writeClientsFile(newUser);
+    writeClientsFile();
 }
 
 bool ClientsFilesMenager::writeClientsFile(){
@@ -289,6 +289,7 @@ bool ClientsFilesMenager::writeClientsFile(){
             break;
         }
     }
+    bool userFound = false;
     QFile newFile(TEMP_FILE_NAME);
     newFile.remove();
     if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){  // File Not Open Error
@@ -309,58 +310,107 @@ bool ClientsFilesMenager::writeClientsFile(){
                 if(!readNextClient(tempUser, file))
                 {
                     file.close();
+                    newFile.close();
                     SERVER_MSG("--- Client File Read Failed ---");
                     return false; // READING ERROR
                 }
                 if(!tempUser.checkUser()){
                     // Fail of user check (Depends of command type)
                     file.close();
+                    newFile.close();
                     SERVER_MSG("--- Client File Read Failed ---");
                     return false;
                 }
                 if(requestUser.getUserId() == 0){
-                    if(lastId + 1 < tempUser.getUserId()){
-                        requestUser.setUserId(lastId + 1);
-                        writeNextClient(requestUser, newFile);
-                    }else{
-                        if(tempUser.getUserId() == 0){
+                    if(!userFound){
+                        if(lastId + 1 < tempUser.getUserId()){
                             requestUser.setUserId(lastId + 1);
                             writeNextClient(requestUser, newFile);
+                            userFound = true;
+                        }else{
+                            if(tempUser.getUserId() == 0){
+                                requestUser.setUserId(lastId + 1);
+                                writeNextClient(requestUser, newFile);
+                                userFound = true;
+                            }
                         }
                     }
-                    writeNextClient(tempUser, newFile);
                     lastId = tempUser.getUserId();
+                    writeNextClient(tempUser, newFile);
                 }else{
                     switch(actualSocket->getCmdType()){
                     case COMMAND_TYPE_CLIENT_EDIT:
+                    if(!userFound){
                         if(requestUser.getUserId() == tempUser.getUserId()){
                             writeNextClient(requestUser, newFile);
-                            requestUser.setParam(USER_ID, QString("0"));    // For Information Purpose (Catch Not Found User Error)
+                            userFound = true;    // For Information Purpose (Catch Not Found User Error)
                         }else {
                             writeNextClient(tempUser, newFile);
                         }
+                    }else{
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
                         break;
                     case COMMAND_TYPE_CLIENT_REMOVE:
+                    if(!userFound){
                         if(requestUser.getUserId() == tempUser.getUserId()){
-                            requestUser.setParam(USER_ID, QString("0"));    // For Information Purpose (Catch Not Found User Error)
+                            requestUser.setParam(USER_ID, QString("0"));
+                            userFound = true;// For Information Purpose (Catch Not Found User Error)
                         }else{
                             writeNextClient(tempUser, newFile);
                         }
+                    }else{
+                        file.close();
+                        newFile.close();
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return false;
+                    }
                         break;
                     default:
                         break;
                     }
                 }
-            }while(!readFileRules.check(tempUser, actualSocket));
+            }while(readFileRules.check(tempUser, actualSocket));
             newFile.close();
+            if(!userFound){
+                actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to USER_NOT_FOUND
+                file.close();
+                SERVER_MSG("--- Client File Read Failed ---");
+                return true;
+            }
         }
         file.close();
+        if(!file.remove()){
+            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
+        if(!newFile.rename(CLIENTS_FILE_NAME)){
+            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
+        if(!createClientsFileBackUp()){
+            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
         SERVER_MSG("--- Temp File Write Success");
     }
+    return true;
 }
 
 bool ClientsFilesMenager::writeNextClient(User &user, QFile &file){
     QTextStream s(&file);
+    if(user.getUserId() == 0){
+        s << WRITE_PARAM_TO_FILE(user, USER_ID); //*
+        // END (DONT MODIFY)
+        s << WRITE_PARAM_TO_FILE(user, USER_END_PARAMETER_TOKEN);
+        return  true;
+    }
     s << WRITE_PARAM_TO_FILE(user, USER_ID); //*
     s << WRITE_PARAM_TO_FILE(user, USER_NAME); //*
     s << WRITE_PARAM_TO_FILE(user, USER_PASSWORD); //*

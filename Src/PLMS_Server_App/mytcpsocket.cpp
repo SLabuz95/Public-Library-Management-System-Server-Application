@@ -96,7 +96,7 @@ void MyTcpSocket::decodeRequest(QString msg){
         }
         decodeStat = COMMAND_READ;
     }
-    // Fall-Throught
+    [[clang::fallthrough]];
     case COMMAND_READ:
     {
         tempStr.clear();
@@ -123,7 +123,7 @@ void MyTcpSocket::decodeRequest(QString msg){
             break;
         }
     }
-        // Fall-Throught
+    [[clang::fallthrough]];
     case CONTENT_TYPE_READ:
     {
         tempStr.clear();
@@ -164,6 +164,7 @@ void MyTcpSocket::decodeRequest(QString msg){
         }
         decodeStat = DATA_READ;
     }
+    [[clang::fallthrough]];
     case DATA_READ:
         {
             tempStr.clear();
@@ -245,7 +246,7 @@ void MyTcpSocket::process(){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
             break;
         }
-        app->getClientsFilesMenager().addClient(User(requestData.value(USER_JSON_KEY_TEXT).toObject()), this);
+        app->getClientsFilesMenager().addClient(this);
 
     default:
         break;
