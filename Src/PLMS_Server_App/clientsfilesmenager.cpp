@@ -288,9 +288,14 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
 
 
 
-void ClientsFilesMenager::addClient(MyTcpSocket* newActualSocket){
+void ClientsFilesMenager::addEditRemoveClient(MyTcpSocket* newActualSocket){
     actualSocket = newActualSocket;
     writeClientsFile();
+}
+
+void ClientsFilesMenager::readClients(MyTcpSocket* newActualSocket){
+    actualSocket = newActualSocket;
+    readClientsFile();
 }
 
 bool ClientsFilesMenager::writeClientsFile(){

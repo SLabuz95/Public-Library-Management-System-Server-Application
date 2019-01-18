@@ -1,10 +1,13 @@
 #ifndef READFILERULES_HPP
 #define READFILERULES_HPP
 // ------------------ Macros --------------------------------------------
+#define READ_FILE_RULES_JSON_KEY_TEXT ("readRules")
 #define READ_FILE_RULES_FILTER_TEXT ("filter")
 #define READ_FILE_RULES_FILE_TYPE_TEXT ("fileType")
 #define READ_FILE_RULES_START_ID_TEXT ("startId")
 #define READ_FILE_RULES_MAX_READ_TEXT ("maxRead")
+#define READ_FILE_RULES_FILTER_PARAM_TEXT ("param")
+#define READ_FILE_RULES_FILTER_VALUE_TEXT ("value")
 // Include macros
 
 // ----------------------------------------------------------------------
@@ -67,6 +70,9 @@ private:
     bool maxDecrementing = false;
     uint maxRead = 1;
 
+    bool constructingError = false;
+
+    void readJson(QJsonObject&);
 public:
     //  Is Rule Finished?
     bool check(User&);
@@ -76,6 +82,7 @@ public:
 
     // Get Functions
     App* getParent();
+    bool isConstructingError();
 
     // Rules and File Initialization
     bool initialize(QFile&);

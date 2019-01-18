@@ -53,9 +53,8 @@ private:
     UserParameters checkUserParameters(QString&);
 
 public:
-    void addClient(MyTcpSocket* newActualSocket);
-    void editClient();
-    void removeClient();
+    void addEditRemoveClient(MyTcpSocket* newActualSocket);
+    void readClients(MyTcpSocket* newActualSocket);
 
 private:
     bool readClientsFile(ReadFileRules& rules);

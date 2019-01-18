@@ -240,19 +240,51 @@ void MyTcpSocket::process(){
     // Process
     switch(cmdType){
     // _PH_ ADD COMMAND PROCESSING CODE IF NEED
+    case COMMAND_TYPE_CLIENT_ADD:
+    [[clang::fallthrough]]; // Fallthrough
     case COMMAND_TYPE_CLIENT_REGISTER:
         if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
             break;
         }
-            {
-                User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
-                if(!user.checkUserParameters()){
-                    returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
-                    break;
-                }
-            }
-        app->getClientsFilesMenager().addClient(this);
+        {
+         User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
+         if(!user.checkUserParameters()){
+             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+             break;
+         }
+        }
+        app->getClientsFilesMenager().addEditRemoveClient(this);
+        break;
+    case COMMAND_TYPE_CLIENT_REMOVE:
+        [[clang::fallthrough]]; // FallThrough
+    case COMMAND_TYPE_CLIENT_EDIT:
+        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }
+        {
+        User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
+        if(user.getUserId() != 0){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+            break;
+        }
+        }
+        app->getClientsFilesMenager().addEditRemoveClient(this);
+        break;
+    case COMMAND_TYPE_CLIENT_READ:
+        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }
+        {
+        User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
+        if(user.getUserId() != 0){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+            break;
+        }
+        }
+        app->getClientsFilesMenager().readClients(this);
         break;
     default:
         break;
