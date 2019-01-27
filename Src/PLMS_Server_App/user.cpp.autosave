@@ -1,5 +1,7 @@
 #include"user.hpp"
 #include<QJsonObject>
+#include"app.hpp"
+
 User::User(){
 
 }
@@ -145,12 +147,14 @@ void User::readJson(QJsonObject& o){
 }
 
 unsigned long long User::getFileDataStrLength(){
-    return static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_ID).length()) +
-            static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_NAME).length()) +
-            static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_PASSWORD).length()) +
-            static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_PESEL).length()) +
-            static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_FIRST_NAME).length()) +
-            ((!getParam(USER_SECOND_NAME).isEmpty())? static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_SECOND_NAME).length()) : 0) +
-            static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_SURNAME).length()) +
-            static_cast<unsigned long long>(WRITE_PARAM_TO_FILE((*this), USER_END_PARAMETER_TOKEN).length());   // _PH_ Add additional data if add new one
+    QString str = WRITE_PARAM_TO_FILE((*this), USER_ID) +
+             WRITE_PARAM_TO_FILE((*this), USER_NAME) +
+            WRITE_PARAM_TO_FILE((*this), USER_NAME) + 
+            WRITE_PARAM_TO_FILE((*this), USER_PASSWORD) +
+            WRITE_PARAM_TO_FILE((*this), USER_PESEL) +
+            WRITE_PARAM_TO_FILE((*this), USER_FIRST_NAME) +
+            ((!getParam(USER_SECOND_NAME).isEmpty())? WRITE_PARAM_TO_FILE((*this), USER_SECOND_NAME) : "") +
+            WRITE_PARAM_TO_FILE((*this), USER_SURNAME) +
+            WRITE_PARAM_TO_FILE((*this), USER_END_PARAMETER_TOKEN);     // _PH_ Add additional data if add new one
+    return App::strLenForFile(str);    
 }

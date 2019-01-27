@@ -40,6 +40,7 @@ public:
     static void readCharUtf8(QFile& file, QString& tempChar);
     ClientsFilesMenager& getClientsFilesMenager();
 
+    static unsigned long long strLenForFile(QString&);
 };
 
 #endif // APP_HPP

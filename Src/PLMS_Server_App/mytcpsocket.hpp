@@ -1,6 +1,11 @@
 #ifndef MYTCPSOCKET_HPP
 #define MYTCPSOCKET_HPP
 
+// Memory Pointer Macros ------------------------------------------------------------------------------
+#define SET_PTR_DO(ptr, newPtr) {if(ptr) delete ptr; ptr = newPtr;}
+#define SET_PTR_DOA(ptrArray, newPtrArray) {if(ptrArray) delete []ptrArray; ptrArray = newPtrArray;}
+#define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}
+
 #include<QTcpSocket>
 #include"messagetype.hpp"
 #include"requestdecodestat.hpp"
@@ -14,6 +19,7 @@
 
 class App;
 class User;
+class Book;
 
 class MyTcpSocket{
 public:
@@ -41,6 +47,10 @@ public:
 
     QJsonObject requestData;
 
+    QJsonObject returnData;
+
+    QJsonArray* returnUsers_Books = nullptr;    // Return data ONLY
+
     bool waitForReadyRead(int milis);
     QByteArray readAll();
 
@@ -57,6 +67,7 @@ public:
     void process();
     bool checkCommand(QString&);
     void processReadedUserFromFile(User&);
+    void processReadedBookFromFile(Book&);
 
 };
 

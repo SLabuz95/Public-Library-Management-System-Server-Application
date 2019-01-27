@@ -1,13 +1,12 @@
-#ifndef CLIENTSFILESMENAGER_HPP
-#define CLIENTSFILESMENAGER_HPP
-// ------------------ Macros --------------------------------------------
-#define CLIENTS_FILE_NAME (QString("clients"))
-#define CLIENTS_FILE_BACKUP_NAME (QString("clientsBU"))
-#define TEMP_FILE_NAME (QString("temp"))
-#define CLIENTS_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"clients\" !!! -------------"))
-#define TEMP_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"temp\" !!! -------------"))
+#ifndef BOOKSFILESMANAGER_HPP
+#define BOOKSFILESMANAGER_HPP
 
-#define USER_FAST_ACCESS_STEP (20)
+// ------------------ Macros --------------------------------------------
+#define BOOKS_FILE_NAME (QString("books"))
+#define BOOKS_FILE_BACKUP_NAME (QString("booksBU"))
+#define TEMP_FILE_NAME (QString("tempB"))
+#define BOOKS_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"books\" !!! -------------"))
+#define TEMP_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"tempB\" !!! -------------"))
 
 // Include macros
 
@@ -15,7 +14,7 @@
 
 // ------------------ Includes ------------------------------------------
 #include<stdint.h>
-#include"userparametersenum.hpp"
+#include"bookparameters.hpp"
 // ----------------------------------------------------------------------
 
 // ------------------ Predefinitions ------------------------------------
@@ -29,11 +28,6 @@ class MyTcpSocket;
 
 // ------------------ App Class -----------------------------------------
 
-struct UserFastAccess{
-    unsigned long long id = 0;
-    unsigned long long filePosition = 0;
-};
-
 class ClientsFilesMenager{
 
 public:
@@ -44,20 +38,12 @@ public:
     ~ClientsFilesMenager();
 
 private:
+
     // Parent
     App* parent = nullptr;
 
     // Actual TcpSocket
     MyTcpSocket* actualSocket = nullptr;
-
-    // Fast Access Table
-    UserFastAccess* userFastAccess = nullptr;
-    UserFastAccess* loggedUsers = nullptr;
-    unsigned int numbOfLoggedUsers = 0;
-    unsigned int numbOfUserFastAccess = 0;
-    bool allocUserFastAccess = false;
-
-    unsigned long long filePos = 0;
 
     bool createClientsFile();
     bool createClientsFileBackUp();
@@ -66,7 +52,7 @@ private:
     bool readNextClient(User&, QFile&);
     bool writeNextClient(User&, QFile&);
     UserParameters checkUserParameters(QString&);
-    bool init();
+
 public:
     void addEditRemoveClient(MyTcpSocket* newActualSocket);
     void readClients(MyTcpSocket* newActualSocket);
@@ -75,10 +61,6 @@ private:
     bool readClientsFile(ReadFileRules& rules);
     bool writeClientsFile();
 
-    void reallocFastClients(UserFastAccess*, unsigned int);  // Change table
-    void insertFastClient(unsigned int index, unsigned long long userId, unsigned long long filePos);
-
 };
 
-
-#endif // CLIENTSFILESMENAGER_HPP
+#endif // BOOKSFILESMANAGER_HPP

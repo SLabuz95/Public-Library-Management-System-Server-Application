@@ -3,6 +3,7 @@
 #include"user.hpp"
 #include"mytcpsocket.hpp"
 #include<QJsonArray>
+#include"book.hpp"
 
 
 ReadFileRules::ReadFileRules(FileType fileType, App* parent = nullptr)
@@ -32,13 +33,38 @@ ReadFileRules::ReadFileRules(QJsonObject& jsonObject, App* parent = nullptr)
 ReadFileRules::ReadFileRules(QJsonObject& jsonObject, FileType fileType, App* parent = nullptr)
     : parent(parent), fileType(fileType)
 {
-
+    if(fileType == NUMB_OF_FILE_TYPES)
+    {
+        constructingError = true;
+        return;
+    }
+    readJson(jsonObject);
+    if(constructingError)
+        switch(fileType){
+        case FILE_TYPE_BOOKS_FILE:
+            delete []fileTypeFilter.booksFileFilter;
+            break;
+        case FILE_TYPE_CLIENTS_FILE:
+            delete []fileTypeFilter.clientsFileFilter;
+            break;
+        default:
+            break;
+        }
 }
 
 ReadFileRules::~ReadFileRules(){
-
+    switch(fileType){
+    case FILE_TYPE_BOOKS_FILE:
+        delete []fileTypeFilter.booksFileFilter;
+        break;
+    case FILE_TYPE_CLIENTS_FILE:
+        delete []fileTypeFilter.clientsFileFilter;
+        break;
+    default:
+        break;
+    }
 }
-
+/*
 bool ReadFileRules::check(User &user){
     if(maxDecrementing){
         if(numbOfFilters != 0){
@@ -59,19 +85,24 @@ bool ReadFileRules::check(User &user){
     }
     return true;
 }
-
+*/
 bool ReadFileRules::check(User &user, MyTcpSocket* actualSocket){
     if(maxDecrementing){
         if(numbOfFilters != 0){
             if(checkFilters(user))
                 maxRead--;
+            else {
+                if(maxRead == 0)
+                    return false;
+            }
         }
         else {
             maxRead--;
         }
-        if(maxRead == 0)
+        if(maxRead == 0){
+            actualSocket->processReadedUserFromFile(user);
             return false;
-        else{
+        }else{
             actualSocket->processReadedUserFromFile(user);
             return true;
         }
@@ -79,7 +110,53 @@ bool ReadFileRules::check(User &user, MyTcpSocket* actualSocket){
         if(user.getUserId() == 0)
             return false;
         else{
+            if(numbOfFilters != 0){
+                if(!checkFilters(user))
+                    return true;
+                else{
+                    actualSocket->processReadedUserFromFile(user);
+                    return false;
+                }
+            }
             actualSocket->processReadedUserFromFile(user);
+            return true;
+        }
+    }
+}
+
+bool ReadFileRules::check(Book &book, MyTcpSocket* actualSocket){
+    if(maxDecrementing){
+        if(numbOfFilters != 0){
+            if(checkFilters(book))
+                maxRead--;
+            else {
+                if(maxRead == 0)
+                    return false;
+            }
+        }
+        else {
+            maxRead--;
+        }
+        if(maxRead == 0){
+            actualSocket->processReadedBookFromFile(book);
+            return false;
+        }else{
+            actualSocket->processReadedBookFromFile(book);
+            return true;
+        }
+    }else{
+        if(book.getBookId() == 0)
+            return false;
+        else{
+            if(numbOfFilters != 0){
+                if(!checkFilters(book))
+                    return true;
+                else{
+                    actualSocket->processReadedBookFromFile(book);
+                    return false;
+                }
+            }
+            actualSocket->processReadedBookFromFile(book);
             return true;
         }
     }
@@ -103,7 +180,23 @@ bool ReadFileRules::checkFilters(User &user){
     }
 }
 
-
+bool ReadFileRules::checkFilters(Book &book){
+    QString tempStr;
+    QString tempFilterStr;
+    int filterStrLen = 0;
+    for(uint i = 0; i < numbOfFilters; i++){
+        tempStr = book.getParam((*(fileTypeFilter.booksFileFilter + i)).param);
+        tempFilterStr = (*(fileTypeFilter.booksFileFilter + i)).filterStr;
+        filterStrLen = tempFilterStr.length();
+        if(filterStrLen > tempStr.length()){
+            return false;
+        }else{
+            for(uint j = 0; j < filterStrLen; j++)
+                if(tempStr.at(j) != tempFilterStr.at(j))
+                    break;
+        }
+    }
+}
 
 App* ReadFileRules::getParent(){
     return parent;
@@ -114,18 +207,23 @@ bool ReadFileRules::isConstructingError(){
 }
 
 void ReadFileRules::readJson(QJsonObject& o){
-    if(o.value(READ_FILE_RULES_FILE_TYPE_TEXT) != QJsonValue::Undefined){
-        fileType = static_cast<FileType>(o.value(READ_FILE_RULES_FILE_TYPE_TEXT).toString().toUInt());
-        if(fileType == NUMB_OF_FILE_TYPES){
-            constructingError = true;
-            return;
+    if(fileType == NUMB_OF_FILE_TYPES)
+        if(o.value(READ_FILE_RULES_FILE_TYPE_TEXT) != QJsonValue::Undefined){
+            fileType = static_cast<FileType>(o.value(READ_FILE_RULES_FILE_TYPE_TEXT).toString().toUInt());
+            if(fileType == NUMB_OF_FILE_TYPES){
+                constructingError = true;
+                return;
+            }
         }
-    }
     if(o.value(READ_FILE_RULES_START_ID_TEXT) != QJsonValue::Undefined){
         startIdPoint = o.value(READ_FILE_RULES_START_ID_TEXT).toString().toULongLong();
     }
     if(o.value(READ_FILE_RULES_MAX_READ_TEXT) != QJsonValue::Undefined){
         maxRead = o.value(READ_FILE_RULES_MAX_READ_TEXT).toString().toUInt();
+        if(!(maxRead > 0)){
+            constructingError = true;
+            return;
+        }
         maxDecrementing = true;
     }
     if(o.value(READ_FILE_RULES_FILTER_TEXT) != QJsonValue::Undefined){
@@ -138,7 +236,7 @@ void ReadFileRules::readJson(QJsonObject& o){
             QJsonObject tempFilterObj;
             fileTypeFilter.booksFileFilter = new BooksFileFilter[numbOfFilters];
             for(int i = 0; i < numbOfFilters; i++){
-                if(a.at(i) != QJsonValue::Undefined){
+                if(a.at(i) == QJsonValue::Object){
                     tempFilterObj = a.at(i).toObject();
                 }else{
                     constructingError = true;
@@ -164,7 +262,7 @@ void ReadFileRules::readJson(QJsonObject& o){
             QJsonObject tempFilterObj;
             fileTypeFilter.clientsFileFilter = new ClientsFileFilter[numbOfFilters];
             for(int i = 0; i < numbOfFilters; i++){
-                if(a.at(i) != QJsonValue::Undefined){
+                if(a.at(i) == QJsonValue::Object){
                     tempFilterObj = a.at(i).toObject();
                 }else{
                     constructingError = true;

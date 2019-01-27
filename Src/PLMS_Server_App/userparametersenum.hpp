@@ -20,7 +20,7 @@ enum UserParameters{
     USER_SURNAME,
     USER_PESEL,
     USER_END_PARAMETER_TOKEN,   // Use to catch end of client read
-    USER_NUMB_OF_PARAMETERS // Use to catch errors
+    USER_NUMB_OF_PARAMETERS     // Use to catch errors
 };
 
 #endif // USERPARAMETERSENUM_HPP

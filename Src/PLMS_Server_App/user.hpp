@@ -2,7 +2,7 @@
 #define USER_HPP
 // ------------------ Macros --------------------------------------------
 #define USER_JSON_KEY_TEXT ("user")
-#define WRITE_PARAM_TO_FILE(userO, paramN) userO.getStrForFile(paramN).toUtf8()
+#define WRITE_PARAM_TO_FILE(userO, paramN) (userO.getStrForFile(paramN).toUtf8())
 
 // Include macros
 //#include "mainmacros.hpp"
@@ -16,6 +16,7 @@
 
 // ------------------ Predefinitions ------------------------------------
 class QJsonObject;
+class QJsonArray;
 // ----------------------------------------------------------------------
 
 // ------------------ User Class ------------------------------------
@@ -45,7 +46,6 @@ private:
     // User Pesel
     QString userPesel;      //*
 
-
 public:
 
     // Check User have all required data (function for file)
@@ -71,6 +71,9 @@ public:
     bool checkUserParameters();
 
     void readJson(QJsonObject&);
+    void writeJson(QJsonObject&);
+
+    unsigned long long getFileDataStrLength();
 };
 
 

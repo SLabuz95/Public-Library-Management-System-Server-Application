@@ -25,6 +25,7 @@ class User;
 class QJsonObject;
 class QFile;
 class MyTcpSocket;
+class Book;
 // ----------------------------------------------------------------------
 
 // Clients Filter Struct Definition
@@ -75,10 +76,11 @@ private:
     void readJson(QJsonObject&);
 public:
     //  Is Rule Finished?
-    bool check(User&);
     bool check(User&, MyTcpSocket*);
+    bool check(Book&, MyTcpSocket*);
 
     bool checkFilters(User&);
+    bool checkFilters(Book&);
 
     // Get Functions
     App* getParent();

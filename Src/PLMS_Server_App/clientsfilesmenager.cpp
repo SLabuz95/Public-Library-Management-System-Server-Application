@@ -13,7 +13,12 @@
 ClientsFilesMenager::ClientsFilesMenager(App* parent)
     : parent(parent)
 {
-
+    if(!init()){
+        SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
+        SERVER_MSG("Clients file initialization error");
+        /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
+    }
+    allocUserFastAccess = false;
 }
 
 ClientsFilesMenager::~ClientsFilesMenager(){
@@ -96,11 +101,13 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     }
     break;
     case 5:
+    {
         // Check USER_PESEL
         CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_PESEL, 5, USER_PESEL);
         // Check ...
 
         // End Of Check for 5 Signs
+    }
         break;
     case 7:
     {
@@ -147,6 +154,8 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
 }
 
 bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
+    filePos = 0;    // Reset File Position Pointer
+    unsigned long long idCounter = 0;
     QFile file(CLIENTS_FILE_NAME);
     if(!file.exists()){
         switch(restoreClientsFile()){
@@ -180,7 +189,11 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
                 SERVER_MSG("--- Client File Read Failed ---");
                 return false;
             }
-        }while(!rules.check(tempUser));
+            idCounter++;
+            if(allocUserFastAccess && idCounter % USER_FAST_ACCESS_STEP == 1)
+                insertFastClient(static_cast<unsigned int>(idCounter / USER_FAST_ACCESS_STEP), tempUser.getUserId(), filePos);
+            filePos += tempUser.getFileDataStrLength();
+        }while(!rules.check(tempUser, actualSocket));
         file.close();
         SERVER_MSG("--- Client File Read Success");
     }
@@ -290,17 +303,26 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
 
 void ClientsFilesMenager::addEditRemoveClient(MyTcpSocket* newActualSocket){
     actualSocket = newActualSocket;
-    writeClientsFile();
+    reallocFastClients(nullptr, 0);
+    writeClientsFile();    
 }
 
 void ClientsFilesMenager::readClients(MyTcpSocket* newActualSocket){
     actualSocket = newActualSocket;
-    readClientsFile();
+    QJsonObject jsonObj = actualSocket->requestData.value(READ_FILE_RULES_JSON_KEY_TEXT).toObject();
+    ReadFileRules rfr(jsonObj, parent);
+    if(!rfr.isConstructingError())
+        readClientsFile(rfr);
+    else {
+        newActualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT); // _PH_ Change to Read File Rules JSON Corrupted
+    }
 }
 
 bool ClientsFilesMenager::writeClientsFile(){
     // Reading Rules for Write File
     ReadFileRules readFileRules(FILE_TYPE_CLIENTS_FILE, parent);
+    filePos = 0;    // Reset File Position Pointer
+    unsigned long long idCounter = 0;
     QFile file(CLIENTS_FILE_NAME);
     if(!file.exists()){
         switch(restoreClientsFile()){
@@ -346,6 +368,16 @@ bool ClientsFilesMenager::writeClientsFile(){
                     SERVER_MSG("--- Client File Read Failed ---");
                     return false;
                 }
+                // Fast Access Reallocation --------------
+                // UserFastAccess Reallocation
+                idCounter++;
+                if(idCounter % USER_FAST_ACCESS_STEP == 1)
+                    insertFastClient(static_cast<unsigned int>(idCounter / USER_FAST_ACCESS_STEP), tempUser.getUserId(), filePos);
+
+                // LoggedUser Reallocation
+                insertFastLoggedClient(tempUser.getUserId(), filePos);
+                filePos += tempUser.getFileDataStrLength();
+                // ------------------------------------------
 
                 if(requestUser.getUserId() == 0){
                     // Check if readed from file user have the same PESEL number as requestUser
@@ -466,4 +498,48 @@ bool ClientsFilesMenager::writeNextClient(User &user, QFile &file){
     s << WRITE_PARAM_TO_FILE(user, USER_END_PARAMETER_TOKEN);
 
     return true;
+}
+
+void ClientsFilesMenager::reallocFastClients(UserFastAccess* newArr, unsigned int size){
+    SET_PTR_DOA(userFastAccess, newArr);
+    numbOfUserFastAccess = size;
+}
+
+void ClientsFilesMenager::insertFastClient(unsigned int index, unsigned long long userId, unsigned long long filePos){
+    if(index < numbOfUserFastAccess){
+        (*(userFastAccess + index)).id = userId;
+        (*(userFastAccess + index)).filePosition = filePos;
+    }
+    else {
+        UserFastAccess* tempPtr = new UserFastAccess[index + 1];
+        for(unsigned int i = 0; i < numbOfUserFastAccess; i++)
+            (*(tempPtr + i)) = (*(userFastAccess + i));
+        (*(tempPtr + index)).id = userId;
+        (*(tempPtr + index)).filePosition = filePos;
+        SET_PTR_DOA(userFastAccess, tempPtr);
+        numbOfUserFastAccess = index + 1;
+    }
+}
+
+bool ClientsFilesMenager::init(){
+    ReadFileRules rfr(FILE_TYPE_CLIENTS_FILE, parent);
+    allocUserFastAccess = true;
+    reallocFastClients(nullptr, 0);
+    return readClientsFile(rfr);
+}
+
+void ClientsFilesMenager::insertFastLoggedClient(unsigned long long userId, unsigned long long filePos){
+    for(uint i = 0;  i < numbOfLoggedUsers; i++){
+        if((*(loggedUsers + i)).id == userId){
+            (*(loggedUsers + i)).filePosition = filePos;
+            return;
+        }
+    }
+    UserFastAccess* tempPtr = new UserFastAccess[numbOfLoggedUsers + 1];
+    for(unsigned int i = 0; i < numbOfUserFastAccess; i++)
+        (*(tempPtr + i)) = (*(loggedUsers + i));
+    (*(tempPtr + numbOfLoggedUsers)).id = userId;
+    (*(tempPtr + numbOfLoggedUsers)).filePosition = filePos;
+    SET_PTR_DOA(userFastAccess, tempPtr);
+    numbOfLoggedUsers++;
 }

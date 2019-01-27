@@ -77,6 +77,7 @@ private:
 
     void reallocFastClients(UserFastAccess*, unsigned int);  // Change table
     void insertFastClient(unsigned int index, unsigned long long userId, unsigned long long filePos);
+    void insertFastLoggedClient(unsigned long long userId, unsigned long long filePos);
 
 };
 

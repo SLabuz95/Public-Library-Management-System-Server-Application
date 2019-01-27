@@ -1,8 +1,12 @@
 #include"mytcpsocket.hpp"
 #include<QJsonObject>
 #include<QJsonDocument>
+#include<QJsonArray>
 #include"app.hpp"
 #include"user.hpp"
+#include"readfilerules.hpp"
+#include"book.hpp"
+
 MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket, App* app)
     : tcpSocket(tcpSocket), msgType(NUMB_OF_MESSAGE_TYPES), app(app)
 {
@@ -201,23 +205,26 @@ void MyTcpSocket::decodeRequest(QString msg){
 void MyTcpSocket::sendReturnMessage(){
     QJsonObject jsonObj;
     QJsonDocument jsonDoc;
-    jsonObj.insert(RETURN_ERROR_JSON_VARIABLE_TEXT, QJsonValue::fromVariant(returnErrorType));
-    if(returnErrorType == RETURN_ERROR_NO_ERROR){
-        switch(cmdType){
-        // _PH_ ADD RETURN MESSAGE JSON TO WRITE (MODIFY jsonObj VARIABLE)
-        default:
-            break;
-        }
+    if(returnErrorType == RETURN_ERROR_NO_ERROR){ // _PH_ Modify to add additional information (EDIT ONLY returnData VARIABLE)
+        // DONT MODIFY________________________
+        returnData.insert(RETURN_ERROR_JSON_VARIABLE_TEXT, QJsonValue::fromVariant(returnErrorType));
+        // ___________________________________
+        // ADDITIONAL INFORMATION____________________
+
+        // __________________________________________
+
+        jsonDoc.setObject(returnData);  // ALWAYS AT END
     }else{
-        switch(returnErrorType){
+        jsonObj.insert(RETURN_ERROR_JSON_VARIABLE_TEXT, QJsonValue::fromVariant(returnErrorType));
+        switch(returnErrorType){    // _PH_ Modify to add additional error information (EDIT ONLY jsonObj VARIABLE)
         case RETURN_ERROR_JSON_PARSE_ERROR:
             jsonObj.insert(RETURN_ERROR_JSON_PARSE_ERROR_VARIABLE_TEXT, QJsonValue::fromVariant(jsonParseError.error));
             break;
         default:
             break;
         }
-    }
-    jsonDoc.setObject(jsonObj);
+        jsonDoc.setObject(jsonObj); // ALWAYS AT END
+    }    
     tcpSocket->write(RETURN_MESSAGE(jsonDoc));
     tcpSocket->waitForBytesWritten(3000);
     delete this;
@@ -273,18 +280,14 @@ void MyTcpSocket::process(){
         app->getClientsFilesMenager().addEditRemoveClient(this);
         break;
     case COMMAND_TYPE_CLIENT_READ:
-        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
-            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+        if(requestData.value(READ_FILE_RULES_JSON_KEY_TEXT) == QJsonValue::Undefined){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to Rules JSON Corrupted
             break;
         }
-        {
-        User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
-        if(user.getUserId() != 0){
-            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
-            break;
-        }
-        }
+        returnUsers_Books = new QJsonArray();
         app->getClientsFilesMenager().readClients(this);
+        returnData.insert("user", *returnUsers_Books);
+        SET_PTR_DO(returnUsers_Books, nullptr);
         break;
     default:
         break;
@@ -360,7 +363,26 @@ bool MyTcpSocket::checkCommand(QString &cmd){
 
 void MyTcpSocket::processReadedUserFromFile(User &user){
     switch(cmdType){
-    case COMMAND_TYPE_CLIENT_REGISTER:
+    case COMMAND_TYPE_CLIENT_READ:
+    {
+        QJsonObject tempUserJsonObject;
+        user.writeJson(tempUserJsonObject);
+        returnUsers_Books->append(tempUserJsonObject);
+    }
+        break;
+    default:
+        break;
+    }
+}
+
+void MyTcpSocket::processReadedBookFromFile(Book &book){
+    switch(cmdType){
+    case COMMAND_TYPE_CLIENT_READ:
+    {
+        QJsonObject tempBookJsonObject;
+        book.writeJson(tempBookJsonObject);
+        returnUsers_Books->append(tempBookJsonObject);
+    }
         break;
     default:
         break;
