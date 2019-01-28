@@ -9,17 +9,15 @@
 
 MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket, App* app)
     : tcpSocket(tcpSocket), msgType(NUMB_OF_MESSAGE_TYPES), app(app)
-{
-
-}
+{}
 
 MyTcpSocket::~MyTcpSocket(){
     tcpSocket->disconnectFromHost();
     if(tcpSocket->state() == QAbstractSocket::UnconnectedState || tcpSocket->waitForDisconnected(3000))
         qDebug() << "Socket disconnected";
     tcpSocket->close();
-
     tcpSocket->deleteLater();
+    clearMemory();
 }
 
 bool MyTcpSocket::waitForReadyRead(int milis){
@@ -289,6 +287,18 @@ void MyTcpSocket::process(){
         returnData.insert("user", *returnUsers_Books);
         SET_PTR_DO(returnUsers_Books, nullptr);
         break;
+    case COMMAND_TYPE_CLIENT_LOGIN:
+        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }
+        app->getClientsFilesMenager().loginClient(this);
+        break;
+    case COMMAND_TYPE_CLIENT_LOGOUT:
+        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }
     default:
         break;
     }
@@ -363,13 +373,16 @@ bool MyTcpSocket::checkCommand(QString &cmd){
 
 void MyTcpSocket::processReadedUserFromFile(User &user){
     switch(cmdType){
+    case COMMAND_TYPE_CLIENT_LOGIN:
+        app->getClientsFilesMenager().insertFastLoggedClient(user.getUserId(), app->getClientsFilesMenager().getActualFilePos());
+        [[clang::fallthrough]]; // FallThrough
     case COMMAND_TYPE_CLIENT_READ:
     {
         QJsonObject tempUserJsonObject;
         user.writeJson(tempUserJsonObject);
         returnUsers_Books->append(tempUserJsonObject);
     }
-        break;
+        break;    
     default:
         break;
     }
@@ -391,4 +404,12 @@ void MyTcpSocket::processReadedBookFromFile(Book &book){
 
 CommandType MyTcpSocket::getCmdType(){
     return cmdType;
+}
+
+void MyTcpSocket::addNextPossibleReadId(unsigned long long id){
+    returnData.insert(READ_FILE_RULES_NEXT_POSSIBLE_READ_ID, QString::number(id));
+}
+
+void MyTcpSocket::clearMemory(){
+    SET_PTR_DO(returnUsers_Books, nullptr);
 }

@@ -4,6 +4,10 @@
 #define USER_JSON_KEY_TEXT ("user")
 #define WRITE_PARAM_TO_FILE(userO, paramN) (userO.getStrForFile(paramN).toUtf8())
 
+// Memory Pointer Macros ------------------------------------------------------------------------------
+#define SET_PTR_DO(ptr, newPtr) {if(ptr) delete ptr; ptr = newPtr;}
+#define SET_PTR_DOA(ptrA, newPtrA) {if(ptrA) delete []ptrA; ptrA = newPtrA;}
+#define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}
 // Include macros
 //#include "mainmacros.hpp"
 
@@ -12,6 +16,7 @@
 // ------------------ Includes ------------------------------------------
 #include<QString>
 #include"userparametersenum.hpp"
+#include"userpermissions.hpp"
 // ----------------------------------------------------------------------
 
 // ------------------ Predefinitions ------------------------------------
@@ -45,6 +50,11 @@ private:
     QString userSurname;    //*
     // User Pesel
     QString userPesel;      //*
+    // User Book Id's
+    unsigned long long* bookId = nullptr;
+    ushort numbOfBookId = 0;
+    // User Permissions
+    UserPermissions userPermissions = NUMB_OF_USER_PERMISSIONS;
 
 public:
 
@@ -54,6 +64,12 @@ public:
     // Get Functions
     QString getUserName();
     unsigned long long getUserId();
+    unsigned long long* getBookId();
+    ushort getNumbOfBookId();
+    UserPermissions getUserPermissions();
+
+    void addBookId(unsigned long long newBook);
+    void removeBookId(unsigned long long removeBook);
 
     // Set User Id
     void setUserId(unsigned long long newUserId);
@@ -74,6 +90,9 @@ public:
     void writeJson(QJsonObject&);
 
     unsigned long long getFileDataStrLength();
+
+    void merge(User&);
+    void mergeBookId(User&);
 };
 
 

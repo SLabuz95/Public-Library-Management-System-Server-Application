@@ -9,6 +9,7 @@
 #include"filetypeenum.hpp"
 #include"mytcpsocket.hpp"
 #include<QTextStream>
+#include<QJsonArray>
 
 ClientsFilesMenager::ClientsFilesMenager(App* parent)
     : parent(parent)
@@ -76,7 +77,8 @@ uint8_t ClientsFilesMenager::restoreClientsFile(){
 
 
 void ClientsFilesMenager::clearMemory(){
-
+    SET_PTR_DOA(userFastAccess, nullptr);
+    SET_PTR_DOA(loggedUsers, nullptr);
 }
 
 UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
@@ -124,6 +126,8 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
         CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_PASSWORD, 8, USER_PASSWORD);
         // Check USER_ID
         CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_ID, 8, USER_ID);
+        // Check USER_PERMISSIONS
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_PERMISSIONS, 8, USER_PERMISSIONS);
         // Check ...
 
         // End Of Check for 8 Signs
@@ -142,6 +146,8 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
     {
         // Check USER_SECOND_NAME
         CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_SECOND_NAME, 10, USER_SECOND_NAME);
+        // Check USER_BOOK_ID
+        CHECK_PARAM_RETURN_V(checkStr, USER_PARAMETERS_USER_BOOK_ID, 10, USER_BOOK_ID);
         // Check ...
 
         // End Of Check for 10 Signs
@@ -154,7 +160,7 @@ UserParameters ClientsFilesMenager::checkUserParameters(QString &checkStr){
 }
 
 bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
-    filePos = 0;    // Reset File Position Pointer
+    filePos = getFilePos(rules.getStartIdPoint());// Reset File Position Pointer
     unsigned long long idCounter = 0;
     QFile file(CLIENTS_FILE_NAME);
     if(!file.exists()){
@@ -175,6 +181,7 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
     }else{
         // File Reading Depends of Reading Rules
         SERVER_MSG("--- Client File Reading Start ---");
+        file.seek(filePos);
         User tempUser;
         do{
             if(!readNextClient(tempUser, file))
@@ -190,10 +197,10 @@ bool ClientsFilesMenager::readClientsFile(ReadFileRules& rules){
                 return false;
             }
             idCounter++;
-            if(allocUserFastAccess && idCounter % USER_FAST_ACCESS_STEP == 1)
+            if(allocUserFastAccess && idCounter % USER_FAST_ACCESS_STEP == 1 && tempUser.getUserId() != 0)
                 insertFastClient(static_cast<unsigned int>(idCounter / USER_FAST_ACCESS_STEP), tempUser.getUserId(), filePos);
             filePos += tempUser.getFileDataStrLength();
-        }while(!rules.check(tempUser, actualSocket));
+        }while(rules.check(tempUser, actualSocket));
         file.close();
         SERVER_MSG("--- Client File Read Success");
     }
@@ -293,29 +300,89 @@ bool ClientsFilesMenager::readNextClient(User &tempUser, QFile &file){
                     frs = FILE_READING_SEARCHING;
             }
             break;
-            default:
-            break;
-        }
+         }
     }
 }
 
-
-
 void ClientsFilesMenager::addEditRemoveClient(MyTcpSocket* newActualSocket){
     actualSocket = newActualSocket;
+    fileOperation = true;
     reallocFastClients(nullptr, 0);
-    writeClientsFile();    
+    writeClientsFile();
+    fileOperation = false;
 }
 
 void ClientsFilesMenager::readClients(MyTcpSocket* newActualSocket){
     actualSocket = newActualSocket;
     QJsonObject jsonObj = actualSocket->requestData.value(READ_FILE_RULES_JSON_KEY_TEXT).toObject();
     ReadFileRules rfr(jsonObj, parent);
-    if(!rfr.isConstructingError())
+    if(!rfr.isConstructingError()){
+        fileOperation = true;
         readClientsFile(rfr);
-    else {
+        fileOperation = false;
+    }else {
         newActualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT); // _PH_ Change to Read File Rules JSON Corrupted
     }
+
+}
+
+void ClientsFilesMenager::loginClient(MyTcpSocket *newActualSocket){
+    actualSocket = newActualSocket;
+    User user(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toObject());
+    if(user.getParam(USER_NAME).isEmpty() || user.getParam(USER_PASSWORD).isEmpty())
+    {
+        actualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT);  // // _PH_ CHANGE to  User JSON Corrupted
+    }else{
+        QJsonArray filterArr;
+        QJsonObject filterObj;
+        filterObj.insert(READ_FILE_RULES_FILTER_PARAM_TEXT, USER_NAME);
+        filterObj.insert(READ_FILE_RULES_FILTER_VALUE_TEXT, user.getParam(USER_NAME));
+        filterArr.append(filterObj);
+        filterObj = QJsonObject();
+        filterObj.insert(READ_FILE_RULES_FILTER_PARAM_TEXT, USER_PASSWORD);
+        filterObj.insert(READ_FILE_RULES_FILTER_VALUE_TEXT, user.getParam(USER_PASSWORD));
+        filterArr.append(filterObj);
+        filterObj = QJsonObject();
+        filterObj.insert(READ_FILE_RULES_FILE_TYPE_TEXT, FILE_TYPE_CLIENTS_FILE);
+        filterObj.insert(READ_FILE_RULES_MAX_READ_TEXT, 1);
+        filterObj.insert(READ_FILE_RULES_FILTER_TEXT, filterArr);
+        ReadFileRules rfr(filterObj, parent);
+        if(!rfr.isConstructingError()){
+            fileOperation = true;
+            readClientsFile(rfr);
+            fileOperation = false;
+        }else {
+            newActualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT); // _PH_ Change to Read File Rules JSON Corrupted
+        }
+    }
+}
+
+void ClientsFilesMenager::logoutClient(MyTcpSocket *newActualSocket){
+    newActualSocket = actualSocket;
+    User user(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toObject());
+    if(user.getUserId() != 0){
+        fileOperation = true;
+        removeFastLoggedClient(user.getUserId());
+        fileOperation = false;
+    }else{
+        newActualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT); // _PH_ Change to Read File Rules JSON Corrupted
+    }
+}
+
+void ClientsFilesMenager::extendActivity(MyTcpSocket *newActualSocket){
+    newActualSocket = actualSocket;
+    QJsonArray jsonA = actualSocket->requestData.value(USER_PARAMETERS_USER_ID).toArray();
+    uint aLen = jsonA.count();
+    for(uint j = 0; j < aLen; j++){
+        unsigned long long tempId = jsonA.at(j).toString().toULongLong();
+        for(uint i = 0;  i < numbOfLoggedUsers; i++){
+            if((*(loggedUsers + i)).id == tempId){
+                (*(loggedUsers + i)).activity = MAX_ACTIVITY_VALUE;
+                break;
+            }
+        }
+    }
+
 }
 
 bool ClientsFilesMenager::writeClientsFile(){
@@ -371,7 +438,7 @@ bool ClientsFilesMenager::writeClientsFile(){
                 // Fast Access Reallocation --------------
                 // UserFastAccess Reallocation
                 idCounter++;
-                if(idCounter % USER_FAST_ACCESS_STEP == 1)
+                if(idCounter % USER_FAST_ACCESS_STEP == 1 && tempUser.getUserId() != 0)
                     insertFastClient(static_cast<unsigned int>(idCounter / USER_FAST_ACCESS_STEP), tempUser.getUserId(), filePos);
 
                 // LoggedUser Reallocation
@@ -389,7 +456,7 @@ bool ClientsFilesMenager::writeClientsFile(){
                         return false;
                     }
                     // Check if readed from file user have the same user name as requestUser
-                    if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
+                    if(requestUser.getParam(USER_NAME) == tempUser.getParam(USER_NAME)){
                         SERVER_MSG("There is a user with the same user name");
                         file.close();
                         newFile.close();
@@ -414,34 +481,43 @@ bool ClientsFilesMenager::writeClientsFile(){
                 }else{
                     switch(actualSocket->getCmdType()){
                     case COMMAND_TYPE_CLIENT_EDIT:
-                    if(!userFound){
+                        if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL) && requestUser.getUserId() != tempUser.getUserId()){
+                            // There is a user with the same pesel number
+                            SERVER_MSG("There is a user with the same PESEL name");
+                            file.close();
+                            newFile.close();
+                            SERVER_MSG("--- Client File Read Failed ---");
+                            return false;
+                        }
+                        // Check if readed from file user have the same user name as requestUser
+                        if(requestUser.getParam(USER_NAME) == tempUser.getParam(USER_NAME) && requestUser.getUserId() != tempUser.getUserId()){
+                            SERVER_MSG("There is a user with the same user name");
+                            file.close();
+                            newFile.close();
+                            SERVER_MSG("--- Client File Read Failed ---");
+                            return false;
+                        }
                         if(requestUser.getUserId() == tempUser.getUserId()){
-                            writeNextClient(requestUser, newFile);
+                            if(userFound){
+                                file.close();
+                                newFile.close();
+                                SERVER_MSG("--- Client File Read Failed ---");
+                                return false;
+                            }
+                            tempUser.merge(requestUser);
+                            writeNextClient(tempUser, newFile);
                             userFound = true;    // For Information Purpose (Catch Not Found User Error)
                         }else {
                             writeNextClient(tempUser, newFile);
-                        }
-                    }else{
-                        file.close();
-                        newFile.close();
-                        SERVER_MSG("--- Client File Read Failed ---");
-                        return false;
-                    }
+                        }                    
                         break;
                     case COMMAND_TYPE_CLIENT_REMOVE:
-                    if(!userFound){
-                        if(requestUser.getUserId() == tempUser.getUserId()){
+                    if(requestUser.getUserId() == tempUser.getUserId() && requestUser.getUserId() != 0){
                             requestUser.setParam(USER_ID, QString("0"));
                             userFound = true;// For Information Purpose (Catch Not Found User Error)
-                        }else{
+                     }else{
                             writeNextClient(tempUser, newFile);
-                        }
-                    }else{
-                        file.close();
-                        newFile.close();
-                        SERVER_MSG("--- Client File Read Failed ---");
-                        return false;
-                    }
+                     }
                         break;
                     default:
                         break;
@@ -493,7 +569,8 @@ bool ClientsFilesMenager::writeNextClient(User &user, QFile &file){
     if(!user.getParam(USER_SECOND_NAME).isEmpty())
         s << WRITE_PARAM_TO_FILE(user, USER_SECOND_NAME);
     s << WRITE_PARAM_TO_FILE(user, USER_SURNAME);
-
+    s << WRITE_PARAM_TO_FILE(user, USER_PERMISSIONS);
+    s << WRITE_PARAM_TO_FILE(user, USER_BOOK_ID);
     // END (DONT MODIFY)
     s << WRITE_PARAM_TO_FILE(user, USER_END_PARAMETER_TOKEN);
 
@@ -509,8 +586,7 @@ void ClientsFilesMenager::insertFastClient(unsigned int index, unsigned long lon
     if(index < numbOfUserFastAccess){
         (*(userFastAccess + index)).id = userId;
         (*(userFastAccess + index)).filePosition = filePos;
-    }
-    else {
+    }else {
         UserFastAccess* tempPtr = new UserFastAccess[index + 1];
         for(unsigned int i = 0; i < numbOfUserFastAccess; i++)
             (*(tempPtr + i)) = (*(userFastAccess + i));
@@ -524,8 +600,13 @@ void ClientsFilesMenager::insertFastClient(unsigned int index, unsigned long lon
 bool ClientsFilesMenager::init(){
     ReadFileRules rfr(FILE_TYPE_CLIENTS_FILE, parent);
     allocUserFastAccess = true;
+    fileOperation = true;
+    actualSocket = new MyTcpSocket(new QTcpSocket(), parent);   // Fake Session To Avoid Memory Destruction
     reallocFastClients(nullptr, 0);
-    return readClientsFile(rfr);
+    bool ret = readClientsFile(rfr);
+    SET_PTR_DO(actualSocket, nullptr);
+    fileOperation = false;
+    return ret;
 }
 
 void ClientsFilesMenager::insertFastLoggedClient(unsigned long long userId, unsigned long long filePos){
@@ -535,11 +616,72 @@ void ClientsFilesMenager::insertFastLoggedClient(unsigned long long userId, unsi
             return;
         }
     }
-    UserFastAccess* tempPtr = new UserFastAccess[numbOfLoggedUsers + 1];
-    for(unsigned int i = 0; i < numbOfUserFastAccess; i++)
+    UserLoggedFastAccess* tempPtr = new UserLoggedFastAccess[numbOfLoggedUsers + 1];
+    for(unsigned int i = 0; i < numbOfLoggedUsers; i++)
         (*(tempPtr + i)) = (*(loggedUsers + i));
     (*(tempPtr + numbOfLoggedUsers)).id = userId;
     (*(tempPtr + numbOfLoggedUsers)).filePosition = filePos;
-    SET_PTR_DOA(userFastAccess, tempPtr);
+    SET_PTR_DOA(loggedUsers, tempPtr);
     numbOfLoggedUsers++;
+    qDebug() << numbOfLoggedUsers;
 }
+
+void ClientsFilesMenager::removeFastLoggedClient(unsigned long long userId){
+    if(numbOfLoggedUsers > 1){
+        UserLoggedFastAccess* temp = new UserLoggedFastAccess[numbOfLoggedUsers - 1];
+        ushort remove = 0;
+        for(unsigned int i = 0; i < numbOfLoggedUsers; i++){
+            if((*(loggedUsers + i)).id != userId)
+                (*(temp + i - remove)) = (*(loggedUsers + i));
+            else
+                remove++;
+        }
+        SET_PTR_DOA(loggedUsers, temp);
+    }else{
+        SET_PTR_DOA(loggedUsers, nullptr);
+    }
+    numbOfLoggedUsers--;
+}
+
+void ClientsFilesMenager::checkOrReduceActivity(){
+    for(uint i = 0;  i < numbOfLoggedUsers; i++){
+        if((*(loggedUsers + i)).activity > 0){
+                (*(loggedUsers + i)).activity--;
+            }else{
+                removeFastLoggedClient((*(loggedUsers + i)).id);
+                i--;
+            }
+    }
+}
+
+unsigned long long ClientsFilesMenager::getFilePos(unsigned long long id){
+    if(id == 0)
+        return 0;
+    // Check logged users
+    for(uint i = 0; i < numbOfLoggedUsers; i++)
+        if((*(loggedUsers + i)).id == id)
+            return (*(loggedUsers + i)).filePosition;
+
+    // Check fast table
+    for(uint i = 0; i < numbOfUserFastAccess; i++)
+        if((*(userFastAccess + i)).id > id && i > 0)
+            return (*(userFastAccess + i - 1)).filePosition;
+    return (*(userFastAccess + numbOfUserFastAccess - 1)).filePosition;
+}
+
+unsigned long long ClientsFilesMenager::getActualFilePos(){
+    return filePos;
+}
+
+bool ClientsFilesMenager::isFileOperation(){
+    return fileOperation;
+}
+
+UserLoggedFastAccess* ClientsFilesMenager::getLoggedUser(){
+    return loggedUsers;
+}
+
+int ClientsFilesMenager::getNumbOfLoggedUser(){
+    return numbOfLoggedUsers;
+}
+

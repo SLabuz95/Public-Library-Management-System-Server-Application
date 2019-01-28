@@ -4,8 +4,8 @@
 #include<QString>
 
 struct BookComment{
-    QString content;
     unsigned long long userId = 0;
+    QString content;
 };
 
 #endif // BOOKCOMMENT_HPP

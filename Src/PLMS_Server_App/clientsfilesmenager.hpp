@@ -8,6 +8,7 @@
 #define TEMP_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"temp\" !!! -------------"))
 
 #define USER_FAST_ACCESS_STEP (20)
+#define MAX_ACTIVITY_VALUE (10)
 
 // Include macros
 
@@ -34,6 +35,12 @@ struct UserFastAccess{
     unsigned long long filePosition = 0;
 };
 
+struct UserLoggedFastAccess{
+    unsigned long long id = 0;
+    unsigned long long filePosition = 0;
+    short activity = MAX_ACTIVITY_VALUE;
+};
+
 class ClientsFilesMenager{
 
 public:
@@ -52,12 +59,14 @@ private:
 
     // Fast Access Table
     UserFastAccess* userFastAccess = nullptr;
-    UserFastAccess* loggedUsers = nullptr;
+    UserLoggedFastAccess* loggedUsers = nullptr;
     unsigned int numbOfLoggedUsers = 0;
     unsigned int numbOfUserFastAccess = 0;
     bool allocUserFastAccess = false;
 
     unsigned long long filePos = 0;
+
+    bool fileOperation = false;
 
     bool createClientsFile();
     bool createClientsFileBackUp();
@@ -70,13 +79,25 @@ private:
 public:
     void addEditRemoveClient(MyTcpSocket* newActualSocket);
     void readClients(MyTcpSocket* newActualSocket);
+    void loginClient(MyTcpSocket* newActualSocket);
+    void logoutClient(MyTcpSocket* newActualSocket);
+    void extendActivity(MyTcpSocket* newActualSocket);
+    void insertFastLoggedClient(unsigned long long userId, unsigned long long filePos);
+    void removeFastLoggedClient(unsigned long long userId);
+    void checkOrReduceActivity();
+    unsigned long long getActualFilePos();
+    bool isFileOperation();
 
+    // ----------
 private:
     bool readClientsFile(ReadFileRules& rules);
     bool writeClientsFile();
 
     void reallocFastClients(UserFastAccess*, unsigned int);  // Change table
     void insertFastClient(unsigned int index, unsigned long long userId, unsigned long long filePos);
+
+    unsigned long long getFilePos(unsigned long long id);
+
 
 };
 

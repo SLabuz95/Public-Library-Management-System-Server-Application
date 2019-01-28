@@ -87,79 +87,77 @@ bool ReadFileRules::check(User &user){
 }
 */
 bool ReadFileRules::check(User &user, MyTcpSocket* actualSocket){
+    if(user.getUserId() == 0)
+        return false;
     if(maxDecrementing){
-        if(numbOfFilters != 0){
-            if(checkFilters(user))
-                maxRead--;
-            else {
-                if(maxRead == 0)
-                    return false;
-            }
-        }
-        else {
-            maxRead--;
-        }
-        if(maxRead == 0){
-            actualSocket->processReadedUserFromFile(user);
-            return false;
-        }else{
-            actualSocket->processReadedUserFromFile(user);
-            return true;
-        }
-    }else{
-        if(user.getUserId() == 0)
-            return false;
-        else{
-            if(numbOfFilters != 0){
-                if(!checkFilters(user))
-                    return true;
-                else{
+        if(startIdPoint <= user.getUserId()){
+            if(maxRead > 0){
+                if(numbOfFilters != 0){
+                    if(checkFilters(user)){
+                        maxRead--;
+                        actualSocket->processReadedUserFromFile(user);
+                    }
+                }else{
+                    maxRead--;
                     actualSocket->processReadedUserFromFile(user);
+                }
+            }else{
+                if(nextPossibleReadId)
                     return false;
+                else{
+                    if(numbOfFilters != 0){
+                        if(checkFilters(user)){
+                            nextPossibleReadId = true;
+                            actualSocket->addNextPossibleReadId(user.getUserId());
+                            return false;
+                        }
+                    }else{
+                        nextPossibleReadId = true;
+                        actualSocket->addNextPossibleReadId(user.getUserId());
+                        return false;
+                    }
                 }
             }
-            actualSocket->processReadedUserFromFile(user);
-            return true;
         }
     }
+    return true;
 }
 
 bool ReadFileRules::check(Book &book, MyTcpSocket* actualSocket){
+    if(book.getBookId() == 0)
+        return false;
     if(maxDecrementing){
-        if(numbOfFilters != 0){
-            if(checkFilters(book))
-                maxRead--;
-            else {
-                if(maxRead == 0)
-                    return false;
-            }
-        }
-        else {
-            maxRead--;
-        }
-        if(maxRead == 0){
-            actualSocket->processReadedBookFromFile(book);
-            return false;
-        }else{
-            actualSocket->processReadedBookFromFile(book);
-            return true;
-        }
-    }else{
-        if(book.getBookId() == 0)
-            return false;
-        else{
-            if(numbOfFilters != 0){
-                if(!checkFilters(book))
-                    return true;
-                else{
+        if(startIdPoint <= book.getBookId()){
+            if(maxRead > 0){
+                if(numbOfFilters != 0){
+                    if(checkFilters(book)){
+                        maxRead--;
+                        actualSocket->processReadedBookFromFile(book);
+                    }
+                }else{
+                    maxRead--;
                     actualSocket->processReadedBookFromFile(book);
+                }
+            }else{
+                if(nextPossibleReadId)
                     return false;
+                else{
+                    if(numbOfFilters != 0){
+                        if(checkFilters(book)){
+                            nextPossibleReadId = true;
+                            actualSocket->addNextPossibleReadId(book.getBookId());
+                            return false;
+                        }
+                    }else{
+                        nextPossibleReadId = true;
+                        actualSocket->addNextPossibleReadId(book.getBookId());
+                        return false;
+                    }
                 }
             }
-            actualSocket->processReadedBookFromFile(book);
-            return true;
         }
     }
+    return true;
 }
 
 bool ReadFileRules::checkFilters(User &user){
@@ -204,6 +202,10 @@ App* ReadFileRules::getParent(){
 
 bool ReadFileRules::isConstructingError(){
     return constructingError;
+}
+
+unsigned long long ReadFileRules::getStartIdPoint(){
+    return startIdPoint;
 }
 
 void ReadFileRules::readJson(QJsonObject& o){

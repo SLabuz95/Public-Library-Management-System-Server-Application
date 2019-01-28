@@ -7,6 +7,7 @@
 
 // Memory Pointer Macros ------------------------------------------------------------------------------
 #define SET_PTR_DO(ptr, newPtr) {if(ptr) delete ptr; ptr = newPtr;}
+#define SET_PTR_DOA(ptrA, newPtrA) {if(ptrA) delete []ptrA; ptrA = newPtrA;}
 #define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}
 // Include macros
 //#include "mainmacros.hpp"
@@ -51,9 +52,11 @@ private:
     // Book User ID
     unsigned long long userId = 0; //(Optional check)
     // Book Comments
-    BookComment* bookComments;    //*
+    BookComment* bookComments = nullptr;    //*
     // Book Numb Of Comments
     uint numbOfBookComments = 0;
+
+    bool jsonReadCommentsError = false;
 
 public:
 
@@ -88,13 +91,19 @@ public:
     bool checkBookComments();
 
     // Read Comments from Json
-    BookComment* readCommentsFromJson(QJsonArray&);
+    bool readCommentsFromJson(QJsonArray&);
 
-    QJsonObject& readJson(QJsonObject&);
-    QJsonObject& writeJson(QJsonObject&);
+    bool readJson(QJsonObject&);
+    void writeJson(QJsonObject&);
 
-    void addComment(QString);
+    void addComment(unsigned long long userId);
+    void addComment(unsigned long long userId, QString content);
+    void removeComment(unsigned long long userId);
 
+    unsigned long long getFileDataStrLength();
+
+    void merge(Book&);
+    void mergeBookComments(Book&);
 };
 
 #endif // BOOK_HPP

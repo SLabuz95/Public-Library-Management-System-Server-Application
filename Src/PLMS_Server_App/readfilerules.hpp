@@ -8,6 +8,7 @@
 #define READ_FILE_RULES_MAX_READ_TEXT ("maxRead")
 #define READ_FILE_RULES_FILTER_PARAM_TEXT ("param")
 #define READ_FILE_RULES_FILTER_VALUE_TEXT ("value")
+#define READ_FILE_RULES_NEXT_POSSIBLE_READ_ID ("nextId")
 // Include macros
 
 // ----------------------------------------------------------------------
@@ -68,8 +69,10 @@ private:
     uint numbOfFilters = 0;
     unsigned long long startIdPoint = 0;
 
-    bool maxDecrementing = false;
+    bool maxDecrementing = false;   // Write File Purpose if false
     uint maxRead = 1;
+
+    bool nextPossibleReadId = false;
 
     bool constructingError = false;
 
@@ -85,6 +88,7 @@ public:
     // Get Functions
     App* getParent();
     bool isConstructingError();
+    unsigned long long getStartIdPoint();
 
     // Rules and File Initialization
     bool initialize(QFile&);

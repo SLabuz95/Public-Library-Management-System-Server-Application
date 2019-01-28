@@ -2,9 +2,9 @@
 #define MYTCPSOCKET_HPP
 
 // Memory Pointer Macros ------------------------------------------------------------------------------
-#define SET_PTR_DO(ptr, newPtr) {if(ptr) delete ptr; ptr = newPtr;}
+/*#define SET_PTR_DO(ptr, newPtr) {if(ptr) delete ptr; ptr = newPtr;}
 #define SET_PTR_DOA(ptrArray, newPtrArray) {if(ptrArray) delete []ptrArray; ptrArray = newPtrArray;}
-#define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}
+#define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}*/
 
 #include<QTcpSocket>
 #include"messagetype.hpp"
@@ -68,7 +68,8 @@ public:
     bool checkCommand(QString&);
     void processReadedUserFromFile(User&);
     void processReadedBookFromFile(Book&);
-
+    void addNextPossibleReadId(unsigned long long id);
+    void clearMemory();
 };
 
 #endif // MYTCPSOCKET_HPP

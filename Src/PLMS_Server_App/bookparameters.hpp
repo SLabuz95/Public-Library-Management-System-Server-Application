@@ -19,10 +19,10 @@ enum BookParameters{
     BOOK_TITLE,
     BOOK_PUBLISHER,
     BOOK_EDITION,
-    BOOK_COMMENTS,
     BOOK_USER_ID,
-    BOOK_COMMENTS_CONTENT,
-    BOOK_COMMENTS_USER_ID,
+    BOOK_COMMENTS,  // Its not file parameter
+    BOOK_COMMENT_CONTENT,
+    BOOK_COMMENT_USER_ID,
     BOOK_END_PARAMETER_TOKEN,   // Use to catch end of book read
     BOOK_NUMB_OF_PARAMETERS     // Use to catch errors
 };

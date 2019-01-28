@@ -9,6 +9,8 @@
 #define USER_PARAMETERS_USER_SECOND_NAME ("secondName")
 #define USER_PARAMETERS_USER_SURNAME ("surname")
 #define USER_PARAMETERS_USER_PESEL ("pesel")
+#define USER_PARAMETERS_USER_BOOK_ID ("userBookId")
+#define USER_PARAMETERS_USER_PERMISSIONS ("userPerm")
 #define USER_PARAMETERS_USER_END_PARAMETER_TOKEN ("end")
 
 enum UserParameters{
@@ -19,6 +21,8 @@ enum UserParameters{
     USER_SECOND_NAME,
     USER_SURNAME,
     USER_PESEL,
+    USER_BOOK_ID,
+    USER_PERMISSIONS,
     USER_END_PARAMETER_TOKEN,   // Use to catch end of client read
     USER_NUMB_OF_PARAMETERS     // Use to catch errors
 };

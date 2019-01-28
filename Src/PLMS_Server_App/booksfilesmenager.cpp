@@ -69,7 +69,7 @@ uint8_t BooksFilesMenager::restoreBooksFile(){
 
 
 void BooksFilesMenager::clearMemory(){
-
+    SET_PTR_DOA(bookFastAccess, nullptr);
 }
 
 BookParameters BooksFilesMenager::checkBookParameters(QString &checkStr){
@@ -126,16 +126,6 @@ BookParameters BooksFilesMenager::checkBookParameters(QString &checkStr){
         // End Of Check for 7 Signs
     }
     break;
-    case 8:
-    {
-        // Check BOOK_COMMENTS
-        CHECK_PARAM_RETURN_V(checkStr, BOOK_PARAMETERS_BOOK_COMMENTS, 8, BOOK_COMMENTS);
-
-        // Check ...
-
-        // End Of Check for 8 Signs
-    }
-    break;
     case 9:
     {
         // Check BOOK_PUBLISHER
@@ -161,6 +151,8 @@ BookParameters BooksFilesMenager::checkBookParameters(QString &checkStr){
 }
 
 bool BooksFilesMenager::readBooksFile(ReadFileRules& rules){
+    filePos = getFilePos(rules.getStartIdPoint());// Reset File Position Pointer
+    unsigned long long idCounter = 0;
     QFile file(BOOKS_FILE_NAME);
     if(!file.exists()){
         switch(restoreBooksFile()){
@@ -180,6 +172,7 @@ bool BooksFilesMenager::readBooksFile(ReadFileRules& rules){
     }else{
         // File Reading Depends of Reading Rules
         SERVER_MSG("--- Book File Reading Start ---");
+        file.seek(filePos);
         Book tempBook;
         do{
             if(!readNextBook(tempBook, file))
@@ -194,7 +187,11 @@ bool BooksFilesMenager::readBooksFile(ReadFileRules& rules){
                 SERVER_MSG("--- Book File Read Failed ---");
                 return false;
             }
-        }while(!rules.check(tempBook, actualSocket));
+            idCounter++;
+            if(allocBookFastAccess && idCounter % BOOK_FAST_ACCESS_STEP == 1 && tempBook.getBookId() != 0)
+                insertFastBook(static_cast<unsigned int>(idCounter / BOOK_FAST_ACCESS_STEP), tempBook.getBookId(), filePos);
+            filePos += tempBook.getFileDataStrLength();
+        }while(rules.check(tempBook, actualSocket));
         file.close();
         SERVER_MSG("--- Book File Read Success");
     }
@@ -319,6 +316,8 @@ void BooksFilesMenager::readBooks(MyTcpSocket* newActualSocket){
 bool BooksFilesMenager::writeBooksFile(){
     // Reading Rules for Write File
     ReadFileRules readFileRules(FILE_TYPE_BOOKS_FILE, parent);
+    filePos = 0;    // Reset File Position Pointer
+    unsigned long long idCounter = 0;
     QFile file(BOOKS_FILE_NAME);
     if(!file.exists()){
         switch(restoreBooksFile()){
@@ -364,11 +363,18 @@ bool BooksFilesMenager::writeBooksFile(){
                     SERVER_MSG("--- Book File Read Failed ---");
                     return false;
                 }
+                // Fast Access Reallocation --------------
+                // BookFastAccess Reallocation
+                idCounter++;
+                if(idCounter % BOOK_FAST_ACCESS_STEP == 1 && tempBook.getBookId() != 0)
+                    insertFastBook(static_cast<unsigned int>(idCounter / BOOK_FAST_ACCESS_STEP), tempBook.getBookId(), filePos);
+
+                // ------------------------------------------
 
                 if(requestBook.getBookId() == 0){
-                    // Check if readed from file book have the same  number as requestBook
+                    // Check if readed from file book have the same title, publisher and edition as requestBook
                     if(requestBook.getParam(BOOK_TITLE) == tempBook.getParam(BOOK_TITLE) && requestBook.getParam(BOOK_PUBLISHER) == tempBook.getParam(BOOK_PUBLISHER) && requestBook.getParam(BOOK_EDITION) == tempBook.getParam(BOOK_EDITION)){
-                        SERVER_MSG("There is a book with the same title, publisher and edition.");
+                        SERVER_MSG("There is a book with the same title, publisher and edition");
                         file.close();
                         newFile.close();
                         SERVER_MSG("--- Book File Read Failed ---");
@@ -392,34 +398,35 @@ bool BooksFilesMenager::writeBooksFile(){
                 }else{
                     switch(actualSocket->getCmdType()){
                     case COMMAND_TYPE_BOOK_EDIT:
-                    if(!bookFound){
+                        if(requestBook.getParam(BOOK_TITLE) == tempBook.getParam(BOOK_TITLE) && requestBook.getParam(BOOK_PUBLISHER) == tempBook.getParam(BOOK_PUBLISHER) && requestBook.getParam(BOOK_EDITION) == tempBook.getParam(BOOK_EDITION) && requestBook.getBookId() != tempBook.getBookId()){
+                            // There is a book with the same title, publisher and edition
+                            SERVER_MSG("There is a book with the same title, publisher and edition");
+                            file.close();
+                            newFile.close();
+                            SERVER_MSG("--- Book File Read Failed ---");
+                            return false;
+                        }
                         if(requestBook.getBookId() == tempBook.getBookId()){
-                            writeNextBook(requestBook, newFile);
+                            if(bookFound){
+                                file.close();
+                                newFile.close();
+                                SERVER_MSG("--- Book File Read Failed ---");
+                                return false;
+                            }
+                            tempBook.merge(requestBook);
+                            writeNextBook(tempBook, newFile);
                             bookFound = true;    // For Information Purpose (Catch Not Found Book Error)
                         }else {
                             writeNextBook(tempBook, newFile);
                         }
-                    }else{
-                        file.close();
-                        newFile.close();
-                        SERVER_MSG("--- Book File Read Failed ---");
-                        return false;
-                    }
                         break;
                     case COMMAND_TYPE_BOOK_REMOVE:
-                    if(!bookFound){
-                        if(requestBook.getBookId() == tempBook.getBookId()){
+                    if(requestBook.getBookId() == tempBook.getBookId() && requestBook.getBookId() != 0){
                             requestBook.setParam(BOOK_ID, QString("0"));
                             bookFound = true;// For Information Purpose (Catch Not Found Book Error)
-                        }else{
+                     }else{
                             writeNextBook(tempBook, newFile);
-                        }
-                    }else{
-                        file.close();
-                        newFile.close();
-                        SERVER_MSG("--- Book File Read Failed ---");
-                        return false;
-                    }
+                     }
                         break;
                     default:
                         break;
@@ -502,6 +509,9 @@ void BooksFilesMenager::insertFastBook(unsigned int index, unsigned long long bo
 bool BooksFilesMenager::init(){
     ReadFileRules rfr(FILE_TYPE_BOOKS_FILE, parent);
     allocBookFastAccess = true;
+    actualSocket = new MyTcpSocket(new QTcpSocket(), parent);   // Fake Session To Avoid Memory Destruction
     reallocFastBooks(nullptr, 0);
-    return readBooksFile(rfr);
+    bool ret = readBooksFile(rfr);
+    SET_PTR_DO(actualSocket, nullptr);
+    return ret;
 }

@@ -9,6 +9,12 @@ App::App(int argc, char** argv)
 {
     qDebug() << "Inicjalizacja serwera...\n";
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+    clientsFilesMenager.insertFastLoggedClient(1, 100);
+    clientsFilesMenager.insertFastLoggedClient(4, 120);
+    activityCheckTimer.setInterval(2000);
+    activityCheckTimer.installEventFilter(this);
+    activityCheckTimer.start();
+    qDebug() << "Serwer zainicjalizowany";
 }
 
 App::~App(){
@@ -59,4 +65,78 @@ void App::readCharUtf8(QFile &file, QString &tempChar){
 
 ClientsFilesMenager& App::getClientsFilesMenager(){
     return clientsFilesMenager;
+}
+
+unsigned long long App::strLenForFile(QString &str){
+    unsigned long long counter = 0;
+    QByteArray data = str.toUtf8();
+    ushort i = 1;
+    char tempChar = '\0';
+    QTextStream textStr(data);
+    while(!textStr.atEnd())
+    {
+        textStr.device()->getChar(&tempChar);
+        if(tempChar > 0){
+            if(tempChar == '\n')
+                counter += 2;
+            else
+                counter++;
+        }else{
+        if(tempChar > -96){
+            textStr.device()->getChar(&tempChar);
+            i++;
+        }else{
+            if(tempChar > -112)
+            {
+                for( ; i < 4; i++)
+                {
+                    textStr.device()->getChar(&tempChar);
+                }
+            }else{
+                if(tempChar > -120){
+                    for( ; i < 5; i++){
+                        textStr.device()->getChar(&tempChar);
+                     }
+                }else{
+                    if(tempChar > -124){
+                        for( ; i < 6; i++){
+                            textStr.device()->getChar(&tempChar);
+                        }
+                    }else{
+                        for( ; i < 7; i++){
+                            textStr.device()->getChar(&tempChar);
+                         }
+                    }
+                }
+            }
+        }
+        counter += i;
+        i = 1;
+   }
+ }
+    return counter;
+}
+
+void App::checkActivityTimer(){
+    if(!clientsFilesMenager.isFileOperation()){
+        clientsFilesMenager.checkOrReduceActivity();
+        uint len = clientsFilesMenager.getNumbOfLoggedUser();
+        for(uint i = 0; i < len; i++)
+            qDebug() << QString("Rozmiar: ") + QString::number(clientsFilesMenager.getNumbOfLoggedUser()) + " User: " + QString::number((*(clientsFilesMenager.getLoggedUser() + i)).id) + " Aktywnosc: " + QString::number((*(clientsFilesMenager.getLoggedUser() + i)).activity);
+    }
+}
+
+bool App::eventFilter(QObject *obj, QEvent *ev){
+    switch (ev->type()) {
+    case QEvent::Timer:
+        if(obj == &activityCheckTimer){
+            activityCheckTimer.stop();
+            checkActivityTimer();
+            activityCheckTimer.start();
+        }
+        break;
+    default:
+        break;
+    }
+    return QObject::eventFilter(obj, ev);
 }

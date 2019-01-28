@@ -33,4 +33,6 @@ HEADERS += \
     bookparameters.hpp \
     book.hpp \
     bookstatus.hpp \
-    booksfilesmenager.hpp
+    booksfilesmenager.hpp \
+    bookcomment.hpp \
+    userpermissions.hpp
