@@ -98,7 +98,6 @@ private:
 
     unsigned long long getFilePos(unsigned long long id);
 
-
 };
 
 

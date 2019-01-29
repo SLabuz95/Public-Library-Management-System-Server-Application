@@ -12,7 +12,7 @@
 #define COMMAND_TYPE_BOOK_EDIT_TEXT ("book/edit")
 #define COMMAND_TYPE_BOOK_READ_TEXT ("book/read")
 #define COMMAND_TYPE_BOOK_REMOVE_TEXT ("book/remove")
-#define COMMAND_TYPE_BOOK_CLIENT_ACTIVITY ("client/activity")
+#define COMMAND_TYPE_CLIENT_ACTIVITY_TEXT ("client/activity")
 
 enum CommandType{
     COMMAND_TYPE_CLIENT_ACTIVITY,

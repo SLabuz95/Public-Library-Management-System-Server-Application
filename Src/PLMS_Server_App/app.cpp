@@ -5,12 +5,10 @@
 #include<QTextCodec>
 
 App::App(int argc, char** argv)
-    : QCoreApplication (argc, argv), httpServer(this), clientsFilesMenager(this)
+    : QCoreApplication (argc, argv), httpServer(this), clientsFilesMenager(this), booksFilesMenager(this)
 {
     qDebug() << "Inicjalizacja serwera...\n";
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
-    clientsFilesMenager.insertFastLoggedClient(1, 100);
-    clientsFilesMenager.insertFastLoggedClient(4, 120);
     activityCheckTimer.setInterval(2000);
     activityCheckTimer.installEventFilter(this);
     activityCheckTimer.start();
@@ -67,6 +65,10 @@ ClientsFilesMenager& App::getClientsFilesMenager(){
     return clientsFilesMenager;
 }
 
+BooksFilesMenager& App::getBooksFilesMenager(){
+    return booksFilesMenager;
+}
+
 unsigned long long App::strLenForFile(QString &str){
     unsigned long long counter = 0;
     QByteArray data = str.toUtf8();
@@ -120,9 +122,6 @@ unsigned long long App::strLenForFile(QString &str){
 void App::checkActivityTimer(){
     if(!clientsFilesMenager.isFileOperation()){
         clientsFilesMenager.checkOrReduceActivity();
-        uint len = clientsFilesMenager.getNumbOfLoggedUser();
-        for(uint i = 0; i < len; i++)
-            qDebug() << QString("Rozmiar: ") + QString::number(clientsFilesMenager.getNumbOfLoggedUser()) + " User: " + QString::number((*(clientsFilesMenager.getLoggedUser() + i)).id) + " Aktywnosc: " + QString::number((*(clientsFilesMenager.getLoggedUser() + i)).activity);
     }
 }
 

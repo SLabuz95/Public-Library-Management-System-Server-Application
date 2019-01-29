@@ -6,13 +6,21 @@
 #include<QDebug>
 #include"filereadingstatenum.hpp"
 #include<QJsonObject>
+#include<QJsonArray>
 #include"filetypeenum.hpp"
 #include"mytcpsocket.hpp"
 #include<QTextStream>
 
 BooksFilesMenager::BooksFilesMenager(App* parent)
     : parent(parent)
-{}
+{
+    if(!init()){
+        SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
+        SERVER_MSG("Books file initialization error");
+        /* _PH_ Set internal server error in parent for pause server. Remember to send errors for all active threads*/
+    }
+    allocBookFastAccess = false;
+}
 
 BooksFilesMenager::~BooksFilesMenager(){
     clearMemory();
@@ -111,7 +119,7 @@ BookParameters BooksFilesMenager::checkBookParameters(QString &checkStr){
         CHECK_PARAM_RETURN_V(checkStr, BOOK_PARAMETERS_BOOK_STATUS, 6, BOOK_STATUS);
 
         // Check BOOK_COMMENTS_USER_ID
-        CHECK_PARAM_RETURN_V(checkStr, BOOK_PARAMETERS_BOOK_COMMENTS_USER_ID, 6, BOOK_COMMENTS_USER_ID);
+        CHECK_PARAM_RETURN_V(checkStr, BOOK_PARAMETERS_BOOK_COMMENTS_USER_ID, 6, BOOK_COMMENT_USER_ID);
         // Check ...
 
         // End Of Check for 6 Signs
@@ -138,7 +146,7 @@ BookParameters BooksFilesMenager::checkBookParameters(QString &checkStr){
     case 10:
     {
         // Check BOOK_COMMENTS_CONTENT
-        CHECK_PARAM_RETURN_V(checkStr, BOOK_PARAMETERS_BOOK_COMMENTS_CONTENT, 10, BOOK_COMMENTS_CONTENT);
+        CHECK_PARAM_RETURN_V(checkStr, BOOK_PARAMETERS_BOOK_COMMENTS_CONTENT, 10, BOOK_COMMENT_CONTENT);
         // Check ...
 
         // End Of Check for 10 Signs
@@ -346,7 +354,7 @@ bool BooksFilesMenager::writeBooksFile(){
             return false;
         }else{
             Book tempBook;
-            Book requestBook(actualSocket->requestData.value(BOOK_JSON_KEY_TEXT).toObject());
+            Book requestBook(actualSocket->requestData.value(BOOK_JSON_KEY_TEXT).toArray().at(0).toObject());
             unsigned long long lastId = 0;
             do{
                 if(!readNextBook(tempBook, file))
@@ -514,4 +522,14 @@ bool BooksFilesMenager::init(){
     bool ret = readBooksFile(rfr);
     SET_PTR_DO(actualSocket, nullptr);
     return ret;
+}
+
+unsigned long long BooksFilesMenager::getFilePos(unsigned long long id){
+    if(id == 0)
+        return 0;
+    // Check fast table
+    for(uint i = 0; i < numbOfBookFastAccess; i++)
+        if((*(bookFastAccess + i)).id > id && i > 0)
+            return (*(bookFastAccess + i - 1)).filePosition;
+    return (*(bookFastAccess + numbOfBookFastAccess - 1)).filePosition;
 }

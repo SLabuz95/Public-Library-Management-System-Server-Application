@@ -13,6 +13,7 @@
 #include<QCoreApplication>
 #include"httpserver.hpp"
 #include"clientsfilesmenager.hpp"
+#include"booksfilesmenager.hpp"
 #include<QTimer>
 
 // ----------------------------------------------------------------------
@@ -36,6 +37,7 @@ public:
 private:
     // Elements
     ClientsFilesMenager clientsFilesMenager;
+    BooksFilesMenager booksFilesMenager;
     HttpServer httpServer;
     QTimer activityCheckTimer;
 
@@ -43,6 +45,7 @@ private:
 public:
     static void readCharUtf8(QFile& file, QString& tempChar);
     ClientsFilesMenager& getClientsFilesMenager();
+    BooksFilesMenager& getBooksFilesMenager();
 
     static unsigned long long strLenForFile(QString&);
 

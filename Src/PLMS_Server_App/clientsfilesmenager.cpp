@@ -328,7 +328,7 @@ void ClientsFilesMenager::readClients(MyTcpSocket* newActualSocket){
 
 void ClientsFilesMenager::loginClient(MyTcpSocket *newActualSocket){
     actualSocket = newActualSocket;
-    User user(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toObject());
+    User user(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toArray().at(0).toObject());
     if(user.getParam(USER_NAME).isEmpty() || user.getParam(USER_PASSWORD).isEmpty())
     {
         actualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT);  // // _PH_ CHANGE to  User JSON Corrupted
@@ -359,14 +359,15 @@ void ClientsFilesMenager::loginClient(MyTcpSocket *newActualSocket){
 
 void ClientsFilesMenager::logoutClient(MyTcpSocket *newActualSocket){
     newActualSocket = actualSocket;
-    User user(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toObject());
-    if(user.getUserId() != 0){
-        fileOperation = true;
-        removeFastLoggedClient(user.getUserId());
-        fileOperation = false;
-    }else{
-        newActualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT); // _PH_ Change to Read File Rules JSON Corrupted
+    QJsonArray jA = actualSocket->requestData.value(USER_PARAMETERS_USER_ID).toArray();
+    uint jALen = jA.count();
+    fileOperation = true;
+    for(uint i = 0; i < jALen; i++){
+        if(jA.at(i).toString().toULongLong() != 0){
+            removeFastLoggedClient(jA.at(i).toString().toULongLong());
+        }
     }
+    fileOperation = false;
 }
 
 void ClientsFilesMenager::extendActivity(MyTcpSocket *newActualSocket){
@@ -418,7 +419,7 @@ bool ClientsFilesMenager::writeClientsFile(){
             return false;
         }else{
             User tempUser;
-            User requestUser(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toObject());
+            User requestUser(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toArray().at(0).toObject());
             unsigned long long lastId = 0;
             do{
                 if(!readNextClient(tempUser, file))
@@ -675,13 +676,5 @@ unsigned long long ClientsFilesMenager::getActualFilePos(){
 
 bool ClientsFilesMenager::isFileOperation(){
     return fileOperation;
-}
-
-UserLoggedFastAccess* ClientsFilesMenager::getLoggedUser(){
-    return loggedUsers;
-}
-
-int ClientsFilesMenager::getNumbOfLoggedUser(){
-    return numbOfLoggedUsers;
 }
 
