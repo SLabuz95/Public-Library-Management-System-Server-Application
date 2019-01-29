@@ -628,9 +628,9 @@ void ClientsFilesMenager::insertFastLoggedClient(unsigned long long userId, unsi
 }
 
 void ClientsFilesMenager::removeFastLoggedClient(unsigned long long userId){
+    ushort remove = 0;
     if(numbOfLoggedUsers > 1){
-        UserLoggedFastAccess* temp = new UserLoggedFastAccess[numbOfLoggedUsers - 1];
-        ushort remove = 0;
+        UserLoggedFastAccess* temp = new UserLoggedFastAccess[numbOfLoggedUsers - 1];        
         for(unsigned int i = 0; i < numbOfLoggedUsers; i++){
             if((*(loggedUsers + i)).id != userId)
                 (*(temp + i - remove)) = (*(loggedUsers + i));
@@ -639,9 +639,12 @@ void ClientsFilesMenager::removeFastLoggedClient(unsigned long long userId){
         }
         SET_PTR_DOA(loggedUsers, temp);
     }else{
+        if((*loggedUsers).id == userId ){
         SET_PTR_DOA(loggedUsers, nullptr);
+        remove++;
+        }
     }
-    numbOfLoggedUsers--;
+    numbOfLoggedUsers -= remove;
 }
 
 void ClientsFilesMenager::checkOrReduceActivity(){
