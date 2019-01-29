@@ -212,6 +212,7 @@ void Book::addComment(unsigned long long userId, QString str){
 }
 
 void Book::removeComment(unsigned long long userId){
+    ushort remove = 0;
     if(numbOfBookComments > 1){
         BookComment* temp = new BookComment[numbOfBookComments - 1];
         ushort remove = 0;
@@ -223,9 +224,12 @@ void Book::removeComment(unsigned long long userId){
         }
         SET_PTR_DOA(bookComments, temp);
     }else{
-        SET_PTR_DOA(bookComments, nullptr);
+        if((*bookComments).userId == userId){
+            SET_PTR_DOA(bookComments, nullptr);
+            remove++;
+        }
     }
-    numbOfBookComments--;
+    numbOfBookComments -= remove;
 }
 
 unsigned long long Book::getFileDataStrLength(){

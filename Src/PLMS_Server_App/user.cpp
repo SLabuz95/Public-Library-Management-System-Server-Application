@@ -200,9 +200,9 @@ void User::addBookId(unsigned long long newBook){
 }
 
 void User::removeBookId(unsigned long long removeBook){
+    ushort remove = 0;
     if(numbOfBookId > 1){
         unsigned long long* temp = new unsigned long long[numbOfBookId - 1];
-        ushort remove = 0;
         for(ushort i = 0; i < numbOfBookId; i++){
             if((*(bookId + i)) != removeBook)
                 (*(temp + i - remove)) = (*(bookId + i));
@@ -211,9 +211,12 @@ void User::removeBookId(unsigned long long removeBook){
         }
         SET_PTR_DOA(bookId, temp);
     }else{
-        SET_PTR_DOA(bookId, nullptr);
+        if(*bookId == removeBook){
+            SET_PTR_DOA(bookId, nullptr);
+            remove++;
+        }
     }
-    numbOfBookId--;
+    numbOfBookId -= removeBook;
 }
 
 void User::merge(User &user){
