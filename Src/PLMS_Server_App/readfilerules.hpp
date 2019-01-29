@@ -1,10 +1,14 @@
 #ifndef READFILERULES_HPP
 #define READFILERULES_HPP
 // ------------------ Macros --------------------------------------------
+#define READ_FILE_RULES_JSON_KEY_TEXT ("readRules")
 #define READ_FILE_RULES_FILTER_TEXT ("filter")
 #define READ_FILE_RULES_FILE_TYPE_TEXT ("fileType")
 #define READ_FILE_RULES_START_ID_TEXT ("startId")
 #define READ_FILE_RULES_MAX_READ_TEXT ("maxRead")
+#define READ_FILE_RULES_FILTER_PARAM_TEXT ("param")
+#define READ_FILE_RULES_FILTER_VALUE_TEXT ("value")
+#define READ_FILE_RULES_NEXT_POSSIBLE_READ_ID ("nextId")
 // Include macros
 
 // ----------------------------------------------------------------------
@@ -22,6 +26,7 @@ class User;
 class QJsonObject;
 class QFile;
 class MyTcpSocket;
+class Book;
 // ----------------------------------------------------------------------
 
 // Clients Filter Struct Definition
@@ -64,18 +69,26 @@ private:
     uint numbOfFilters = 0;
     unsigned long long startIdPoint = 0;
 
-    bool maxDecrementing = false;
+    bool maxDecrementing = false;   // Write File Purpose if false
     uint maxRead = 1;
 
+    bool nextPossibleReadId = false;
+
+    bool constructingError = false;
+
+    void readJson(QJsonObject&);
 public:
     //  Is Rule Finished?
-    bool check(User&);
     bool check(User&, MyTcpSocket*);
+    bool check(Book&, MyTcpSocket*);
 
     bool checkFilters(User&);
+    bool checkFilters(Book&);
 
     // Get Functions
     App* getParent();
+    bool isConstructingError();
+    unsigned long long getStartIdPoint();
 
     // Rules and File Initialization
     bool initialize(QFile&);

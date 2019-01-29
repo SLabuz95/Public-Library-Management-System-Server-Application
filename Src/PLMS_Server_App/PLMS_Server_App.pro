@@ -11,7 +11,9 @@ SOURCES += \
     clientsfilesmenager.cpp \
     user.cpp \
     readfilerules.cpp \
-    mytcpsocket.cpp
+    mytcpsocket.cpp \
+    book.cpp \
+    booksfilesmenager.cpp
 
 HEADERS += \
     app.hpp \
@@ -28,4 +30,9 @@ HEADERS += \
     tcpsocketstat.hpp \
     commandtype.hpp \
     filetypeenum.hpp \
-    bookparameters.hpp
+    bookparameters.hpp \
+    book.hpp \
+    bookstatus.hpp \
+    booksfilesmenager.hpp \
+    bookcomment.hpp \
+    userpermissions.hpp

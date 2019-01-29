@@ -5,14 +5,10 @@
 #include<QTextCodec>
 
 App::App(int argc, char** argv)
-    : QCoreApplication (argc, argv), httpServer(this), clientsFilesMenager(this), booksFilesMenager(this)
+    : QCoreApplication (argc, argv), httpServer(this), clientsFilesMenager(this)
 {
     qDebug() << "Inicjalizacja serwera...\n";
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
-    activityCheckTimer.setInterval(2000);
-    activityCheckTimer.installEventFilter(this);
-    activityCheckTimer.start();
-    qDebug() << "Serwer zainicjalizowany";
 }
 
 App::~App(){
@@ -65,10 +61,6 @@ ClientsFilesMenager& App::getClientsFilesMenager(){
     return clientsFilesMenager;
 }
 
-BooksFilesMenager& App::getBooksFilesMenager(){
-    return booksFilesMenager;
-}
-
 unsigned long long App::strLenForFile(QString &str){
     unsigned long long counter = 0;
     QByteArray data = str.toUtf8();
@@ -79,10 +71,7 @@ unsigned long long App::strLenForFile(QString &str){
     {
         textStr.device()->getChar(&tempChar);
         if(tempChar > 0){
-            if(tempChar == '\n')
-                counter += 2;
-            else
-                counter++;
+            counter++;
         }else{
         if(tempChar > -96){
             textStr.device()->getChar(&tempChar);
@@ -93,7 +82,9 @@ unsigned long long App::strLenForFile(QString &str){
                 for( ; i < 4; i++)
                 {
                     textStr.device()->getChar(&tempChar);
+
                 }
+
             }else{
                 if(tempChar > -120){
                     for( ; i < 5; i++){
@@ -103,6 +94,7 @@ unsigned long long App::strLenForFile(QString &str){
                     if(tempChar > -124){
                         for( ; i < 6; i++){
                             textStr.device()->getChar(&tempChar);
+
                         }
                     }else{
                         for( ; i < 7; i++){
@@ -110,6 +102,7 @@ unsigned long long App::strLenForFile(QString &str){
                          }
                     }
                 }
+
             }
         }
         counter += i;
@@ -117,25 +110,4 @@ unsigned long long App::strLenForFile(QString &str){
    }
  }
     return counter;
-}
-
-void App::checkActivityTimer(){
-    if(!clientsFilesMenager.isFileOperation()){
-        clientsFilesMenager.checkOrReduceActivity();
-    }
-}
-
-bool App::eventFilter(QObject *obj, QEvent *ev){
-    switch (ev->type()) {
-    case QEvent::Timer:
-        if(obj == &activityCheckTimer){
-            activityCheckTimer.stop();
-            checkActivityTimer();
-            activityCheckTimer.start();
-        }
-        break;
-    default:
-        break;
-    }
-    return QObject::eventFilter(obj, ev);
 }

@@ -13,6 +13,9 @@
 #include<QCoreApplication>
 #include"httpserver.hpp"
 #include"clientsfilesmenager.hpp"
+#include"booksfilesmenager.hpp"
+#include<QTimer>
+
 // ----------------------------------------------------------------------
 
 // ------------------ Predefinitions ------------------------------------
@@ -23,6 +26,7 @@ class QFile;
 // ------------------ App Class -----------------------------------------
 
 class App : public QCoreApplication{
+    Q_OBJECT
 public:
     // Constructor
     App(int argc, char** argv);
@@ -32,13 +36,22 @@ public:
 
 private:
     // Elements
-
-    HttpServer httpServer;
     ClientsFilesMenager clientsFilesMenager;
+    BooksFilesMenager booksFilesMenager;
+    HttpServer httpServer;
+    QTimer activityCheckTimer;
+
 
 public:
     static void readCharUtf8(QFile& file, QString& tempChar);
     ClientsFilesMenager& getClientsFilesMenager();
+    BooksFilesMenager& getBooksFilesMenager();
+
+    static unsigned long long strLenForFile(QString&);
+
+    void checkActivityTimer();
+
+    bool eventFilter(QObject*, QEvent*);
 
 };
 

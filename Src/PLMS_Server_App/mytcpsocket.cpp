@@ -1,21 +1,23 @@
 #include"mytcpsocket.hpp"
 #include<QJsonObject>
 #include<QJsonDocument>
+#include<QJsonArray>
 #include"app.hpp"
 #include"user.hpp"
+#include"readfilerules.hpp"
+#include"book.hpp"
+
 MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket, App* app)
     : tcpSocket(tcpSocket), msgType(NUMB_OF_MESSAGE_TYPES), app(app)
-{
-
-}
+{}
 
 MyTcpSocket::~MyTcpSocket(){
     tcpSocket->disconnectFromHost();
     if(tcpSocket->state() == QAbstractSocket::UnconnectedState || tcpSocket->waitForDisconnected(3000))
         qDebug() << "Socket disconnected";
     tcpSocket->close();
-
     tcpSocket->deleteLater();
+    clearMemory();
 }
 
 bool MyTcpSocket::waitForReadyRead(int milis){
@@ -201,23 +203,26 @@ void MyTcpSocket::decodeRequest(QString msg){
 void MyTcpSocket::sendReturnMessage(){
     QJsonObject jsonObj;
     QJsonDocument jsonDoc;
-    jsonObj.insert(RETURN_ERROR_JSON_VARIABLE_TEXT, QJsonValue::fromVariant(returnErrorType));
-    if(returnErrorType == RETURN_ERROR_NO_ERROR){
-        switch(cmdType){
-        // _PH_ ADD RETURN MESSAGE JSON TO WRITE (MODIFY jsonObj VARIABLE)
-        default:
-            break;
-        }
+    if(returnErrorType == RETURN_ERROR_NO_ERROR){ // _PH_ Modify to add additional information (EDIT ONLY returnData VARIABLE)
+        // DONT MODIFY________________________
+        returnData.insert(RETURN_ERROR_JSON_VARIABLE_TEXT, QJsonValue::fromVariant(returnErrorType));
+        // ___________________________________
+        // ADDITIONAL INFORMATION____________________
+
+        // __________________________________________
+
+        jsonDoc.setObject(returnData);  // ALWAYS AT END
     }else{
-        switch(returnErrorType){
+        jsonObj.insert(RETURN_ERROR_JSON_VARIABLE_TEXT, QJsonValue::fromVariant(returnErrorType));
+        switch(returnErrorType){    // _PH_ Modify to add additional error information (EDIT ONLY jsonObj VARIABLE)
         case RETURN_ERROR_JSON_PARSE_ERROR:
             jsonObj.insert(RETURN_ERROR_JSON_PARSE_ERROR_VARIABLE_TEXT, QJsonValue::fromVariant(jsonParseError.error));
             break;
         default:
             break;
         }
-    }
-    jsonDoc.setObject(jsonObj);
+        jsonDoc.setObject(jsonObj); // ALWAYS AT END
+    }    
     tcpSocket->write(RETURN_MESSAGE(jsonDoc));
     tcpSocket->waitForBytesWritten(3000);
     delete this;
@@ -240,19 +245,168 @@ void MyTcpSocket::process(){
     // Process
     switch(cmdType){
     // _PH_ ADD COMMAND PROCESSING CODE IF NEED
+    case COMMAND_TYPE_CLIENT_ADD:
+    [[clang::fallthrough]]; // Fallthrough
     case COMMAND_TYPE_CLIENT_REGISTER:
-        if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
+    {
+        QJsonArray jA;
+        if(requestData.value(USER_JSON_KEY_TEXT) != QJsonValue::Array){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
             break;
-        }
+        }else{
+            jA = requestData.value(USER_JSON_KEY_TEXT).toArray();
+            if(jA.count() != 1 || jA.at(0) != QJsonValue::Object){
+                returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                break;
+            }
             {
-                User user(requestData.value(USER_JSON_KEY_TEXT).toObject());
-                if(!user.checkUserParameters()){
+                User user(jA.at(0).toObject());
+                if(user.getUserId() != 0 || !user.checkUserParameters()){
                     returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
                     break;
                 }
+             }
+             app->getClientsFilesMenager().addEditRemoveClient(this);
+        }
+    }
+        break;
+    case COMMAND_TYPE_CLIENT_REMOVE:
+        [[clang::fallthrough]]; // FallThrough
+    case COMMAND_TYPE_CLIENT_EDIT:
+    {
+        QJsonArray jA;
+        if(requestData.value(USER_JSON_KEY_TEXT) != QJsonValue::Array){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }else{
+            jA = requestData.value(USER_JSON_KEY_TEXT).toArray();
+            if(jA.count() != 1 || jA.at(0) != QJsonValue::Object){
+                returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                break;
             }
-        app->getClientsFilesMenager().addClient(this);
+            {
+                User user(jA.at(0).toObject());
+                if(user.getUserId() == 0 || !user.checkUserParameters()){
+                    returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                    break;
+                }
+             }
+            app->getClientsFilesMenager().addEditRemoveClient(this);
+        }
+    }
+        break;
+    case COMMAND_TYPE_CLIENT_READ:
+    {
+        if(requestData.value(READ_FILE_RULES_JSON_KEY_TEXT) != QJsonValue::Object){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to Rules JSON Corrupted
+            break;
+        }
+        returnUsers_Books = new QJsonArray();
+        app->getClientsFilesMenager().readClients(this);
+        returnData.insert(USER_JSON_KEY_TEXT, *returnUsers_Books);
+        SET_PTR_DO(returnUsers_Books, nullptr);
+    }
+        break;
+    case COMMAND_TYPE_CLIENT_LOGIN:
+    {
+        QJsonArray jA;
+        if(requestData.value(USER_JSON_KEY_TEXT) != QJsonValue::Array){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }else{
+            jA = requestData.value(USER_JSON_KEY_TEXT).toArray();
+            if(jA.count() != 1 || jA.at(0) != QJsonValue::Object){
+                returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                break;
+            }
+            returnUsers_Books = new QJsonArray();
+            app->getClientsFilesMenager().loginClient(this);
+            returnData.insert(USER_JSON_KEY_TEXT, *returnUsers_Books);
+            SET_PTR_DO(returnUsers_Books, nullptr);
+        }
+    }
+        break;
+    case COMMAND_TYPE_CLIENT_LOGOUT:
+    {
+        if(requestData.value(USER_PARAMETERS_USER_ID) != QJsonValue::Array){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }else{
+            if(requestData.value(USER_PARAMETERS_USER_ID).toArray().count() > 0)
+                app->getClientsFilesMenager().logoutClient(this);
+        }
+    }
+        break;
+    case COMMAND_TYPE_CLIENT_ACTIVITY:
+    {
+        if(requestData.value(USER_PARAMETERS_USER_ID) != QJsonValue::Array){
+            returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
+            break;
+        }else{
+            if(requestData.value(USER_PARAMETERS_USER_ID).toArray().count() > 0)
+                app->getClientsFilesMenager().extendActivity(this);
+        }
+    }
+        break;
+    case COMMAND_TYPE_BOOK_ADD:
+    {
+        QJsonArray jA;
+        if(requestData.value(BOOK_JSON_KEY_TEXT) != QJsonValue::Array){
+            returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT;
+            break;
+        }else{
+            jA = requestData.value(BOOK_JSON_KEY_TEXT).toArray();
+            if(jA.count() != 1 || jA.at(0) != QJsonValue::Object){
+                returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                break;
+            }
+            {
+                Book book(jA.at(0).toObject());
+                if(book.getBookId() != 0 || !book.checkBookParameters()){
+                    returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                    break;
+                }
+             }
+             app->getBooksFilesMenager().addEditRemoveBook(this);
+        }
+    }
+        break;
+    case COMMAND_TYPE_BOOK_REMOVE:
+        [[clang::fallthrough]]; // FallThrough
+    case COMMAND_TYPE_BOOK_EDIT:
+    {
+        QJsonArray jA;
+        if(requestData.value(BOOK_JSON_KEY_TEXT) != QJsonValue::Array){
+            returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT;
+            break;
+        }else{
+            jA = requestData.value(BOOK_JSON_KEY_TEXT).toArray();
+            if(jA.count() != 1 || jA.at(0) != QJsonValue::Object){
+                returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                break;
+            }
+            {
+                Book book(jA.at(0).toObject());
+                if(book.getBookId() == 0 || !book.checkBookParameters()){
+                    returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT; // _PH_ CHANGE to  User JSON Corrupted
+                    break;
+                }
+             }
+            app->getBooksFilesMenager().addEditRemoveBook(this);
+        }
+    }
+        break;
+    case COMMAND_TYPE_BOOK_READ:
+    {
+        if(requestData.value(READ_FILE_RULES_JSON_KEY_TEXT) != QJsonValue::Object){
+            returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT; // _PH_ CHANGE to Rules JSON Corrupted
+            break;
+        }
+        returnUsers_Books = new QJsonArray();
+        app->getBooksFilesMenager().readBooks(this);
+        returnData.insert(BOOK_JSON_KEY_TEXT, *returnUsers_Books);
+        SET_PTR_DO(returnUsers_Books, nullptr);
+    }
         break;
     default:
         break;
@@ -281,6 +435,12 @@ bool MyTcpSocket::checkCommand(QString &cmd){
             cmdType = COMMAND_TYPE_CLIENT_REGISTER;
             return true;
         }
+        // Check CLIENT_ACTIVITY
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_ACTIVITY_TEXT, 15);
+        if(i == 15){
+            cmdType = COMMAND_TYPE_CLIENT_ACTIVITY;
+            return true;
+        }
         // Check ...
 
         break;
@@ -307,6 +467,12 @@ bool MyTcpSocket::checkCommand(QString &cmd){
             cmdType = COMMAND_TYPE_CLIENT_READ;
             return  true;
         }
+        // Check CLIENT_REMOVE
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_BOOK_REMOVE_TEXT, 11);
+        if(i == 11){
+            cmdType = COMMAND_TYPE_BOOK_REMOVE;
+            return  true;
+        }
         // Check ...
 
         break;
@@ -315,6 +481,38 @@ bool MyTcpSocket::checkCommand(QString &cmd){
         CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_REMOVE_TEXT, 13);
         if(i == 13){
             cmdType = COMMAND_TYPE_CLIENT_REMOVE;
+            return true;
+        }
+        // Check CLIENT_LOGOUT
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_CLIENT_LOGOUT_TEXT, 13);
+        if(i == 13){
+            cmdType = COMMAND_TYPE_CLIENT_LOGOUT;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 8:
+        // Check BOOK_ADD
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_BOOK_ADD_TEXT, 8);
+        if(i == 8){
+            cmdType = COMMAND_TYPE_BOOK_ADD;
+            return true;
+        }
+        // Check ...
+
+        break;
+    case 9:
+        // Check BOOK_EDIT
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_BOOK_EDIT_TEXT, 9);
+        if(i == 9){
+            cmdType = COMMAND_TYPE_BOOK_EDIT;
+            return true;
+        }
+        // Check BOOK_READ
+        CHECK_PARAM_NO_RETURN_V(cmd, COMMAND_TYPE_BOOK_READ_TEXT, 9);
+        if(i == 9){
+            cmdType = COMMAND_TYPE_BOOK_READ;
             return true;
         }
         // Check ...
@@ -328,7 +526,29 @@ bool MyTcpSocket::checkCommand(QString &cmd){
 
 void MyTcpSocket::processReadedUserFromFile(User &user){
     switch(cmdType){
-    case COMMAND_TYPE_CLIENT_REGISTER:
+    case COMMAND_TYPE_CLIENT_LOGIN:
+        app->getClientsFilesMenager().insertFastLoggedClient(user.getUserId(), app->getClientsFilesMenager().getActualFilePos());
+        [[clang::fallthrough]]; // FallThrough
+    case COMMAND_TYPE_CLIENT_READ:
+    {
+        QJsonObject tempUserJsonObject;
+        user.writeJson(tempUserJsonObject);
+        returnUsers_Books->append(tempUserJsonObject);
+    }
+        break;    
+    default:
+        break;
+    }
+}
+
+void MyTcpSocket::processReadedBookFromFile(Book &book){
+    switch(cmdType){
+    case COMMAND_TYPE_BOOK_READ:
+    {
+        QJsonObject tempBookJsonObject;
+        book.writeJson(tempBookJsonObject);
+        returnUsers_Books->append(tempBookJsonObject);
+    }
         break;
     default:
         break;
@@ -337,4 +557,12 @@ void MyTcpSocket::processReadedUserFromFile(User &user){
 
 CommandType MyTcpSocket::getCmdType(){
     return cmdType;
+}
+
+void MyTcpSocket::addNextPossibleReadId(unsigned long long id){
+    returnData.insert(READ_FILE_RULES_NEXT_POSSIBLE_READ_ID, QString::number(id));
+}
+
+void MyTcpSocket::clearMemory(){
+    SET_PTR_DO(returnUsers_Books, nullptr);
 }
