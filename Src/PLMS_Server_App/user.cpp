@@ -216,7 +216,7 @@ void User::removeBookId(unsigned long long removeBook){
             remove++;
         }
     }
-    numbOfBookId -= removeBook;
+    numbOfBookId -= remove;
 }
 
 void User::merge(User &user){
