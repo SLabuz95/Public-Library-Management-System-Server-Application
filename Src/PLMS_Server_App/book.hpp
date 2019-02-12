@@ -4,10 +4,10 @@
 // ------------------ Macros --------------------------------------------
 #define BOOK_JSON_KEY_TEXT ("book")
 #define WRITE_PARAM_TO_FILE(bookO, paramN) (bookO.getStrForFile(paramN).toUtf8())
-
+#define BOOK_DATE_TIME_FORMAT ("dd.MM.yyyy")
 // Memory Pointer Macros ------------------------------------------------------------------------------
-#define SET_PTR_DO(ptr, newPtr) {if(ptr) delete ptr; ptr = newPtr;}
-#define SET_PTR_DOA(ptrA, newPtrA) {if(ptrA) delete []ptrA; ptrA = newPtrA;}
+#define SET_PTR_DO(ptr, newPtr) {if(ptr) {delete ptr; ptr = nullptr;} ptr = newPtr;}
+#define SET_PTR_DOA(ptrA, newPtrA) {if(ptrA) {delete []ptrA; ptrA = nullptr;}; ptrA = newPtrA;}
 #define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}
 // Include macros
 //#include "mainmacros.hpp"
@@ -18,6 +18,8 @@
 #include<QString>
 #include"bookparameters.hpp"
 #include"bookstatus.hpp"
+#include"booktype.hpp"
+#include<QDateTime>
 
 // ----------------------------------------------------------------------
 
@@ -49,12 +51,18 @@ private:
     QString bookPublisher;  //*
     // Book Edition
     QString bookEdition; //*
+    // Book Type
+    BookType bookType = NUMB_OF_BOOK_TYPES;
+    // Book Author
+    QString author;
     // Book User ID
     unsigned long long userId = 0; //(Optional check)
     // Book Comments
     BookComment* bookComments = nullptr;    //*
     // Book Numb Of Comments
     uint numbOfBookComments = 0;
+
+    QDateTime date;
 
     bool jsonReadCommentsError = false;
 
@@ -67,8 +75,10 @@ public:
     unsigned long long getBookId();
     BookStatus getBookStatus();
     BookComment* getBookComments();
+    BookComment getBookCommentById(unsigned long long);
     uint getNumbOfBookComments();
-
+    QDateTime getDate();
+    BookType getBookType();
     // Set Book Id
     void setBookId(unsigned long long newBookId);
 

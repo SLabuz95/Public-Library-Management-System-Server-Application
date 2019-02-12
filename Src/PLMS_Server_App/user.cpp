@@ -165,7 +165,7 @@ void User::readJson(QJsonObject& o){
         userSecondName = o.value(USER_PARAMETERS_USER_SECOND_NAME).toString();
     if(o.value(USER_PARAMETERS_USER_SURNAME) != QJsonValue::Undefined)
         userSurname = o.value(USER_PARAMETERS_USER_SURNAME).toString();
-    if(o.value(USER_PARAMETERS_USER_BOOK_ID) == QJsonValue::Array){
+    if(o.value(USER_PARAMETERS_USER_BOOK_ID) != QJsonValue::Undefined){
         QJsonArray jA = o.value(USER_PARAMETERS_USER_BOOK_ID).toArray();
         numbOfBookId = jA.count();
         bookId = new unsigned long long[numbOfBookId];
@@ -173,7 +173,7 @@ void User::readJson(QJsonObject& o){
             (*(bookId + i)) = jA.at(i).toString().toULongLong();
     }
     if(o.value(USER_PARAMETERS_USER_PERMISSIONS) != QJsonValue::Undefined)
-        userPermissions = static_cast<UserPermissions>(o.value(USER_PARAMETERS_USER_PERMISSIONS).toInt());
+        userPermissions = static_cast<UserPermissions>(o.value(USER_PARAMETERS_USER_PERMISSIONS).toString().toUInt());
 }
 
 unsigned long long User::getFileDataStrLength(){
@@ -236,7 +236,7 @@ void User::merge(User &user){
         setParam(USER_SURNAME, user.getParam(USER_SURNAME));
     if(!user.getParam(USER_PESEL).isEmpty())
         setParam(USER_PESEL, user.getParam(USER_PESEL));
-    if(!user.getParam(USER_PERMISSIONS).isEmpty())
+    if(static_cast<UserPermissions>(user.getParam(USER_PERMISSIONS).toUInt()) != NUMB_OF_USER_PERMISSIONS)
         setParam(USER_PERMISSIONS, user.getParam(USER_PERMISSIONS));
     mergeBookId(user);
 }
@@ -246,7 +246,7 @@ void User::mergeBookId(User &user){
     for(uint i = 0; i < userNoBI; i++){
         uint j = 0;
         for(j = 0; j < numbOfBookId; j++)
-            if((*(user.getBookId() + i)) == (*(bookId + j))){
+            if((*(user.getBookId() + i)) == 0){
                 removeBookId((*(bookId + j)));
                 j--;
                 break;
@@ -284,5 +284,5 @@ void User::writeJson(QJsonObject &o){
         jA.append(QString::number((*(bookId + i))));
     o.insert(USER_PARAMETERS_USER_BOOK_ID, jA);
     if(userPermissions != NUMB_OF_USER_PERMISSIONS)
-        o.insert(USER_PARAMETERS_USER_PERMISSIONS, userPermissions);
+        o.insert(USER_PARAMETERS_USER_PERMISSIONS, QString::number(userPermissions));
 }

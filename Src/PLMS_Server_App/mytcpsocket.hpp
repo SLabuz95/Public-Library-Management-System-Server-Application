@@ -14,13 +14,13 @@
 #include"commandtype.hpp"
 #include<QJsonObject>
 #include<QJsonParseError>
+#include"booklog.hpp"
 
 #define RETURN_MESSAGE(json) ((QString("HTTP/1.1 200 OK\r\nContent-type: application/json\r\nContent-length: ") + QString::number(json.toJson().length()) + QString("\r\n\r\n") + json.toJson()).toUtf8())
 
 class App;
 class User;
 class Book;
-
 class MyTcpSocket{
 public:
     // Constructor
@@ -51,6 +51,10 @@ public:
 
     QJsonArray* returnUsers_Books = nullptr;    // Return data ONLY
 
+    BookLog* bookLogs = nullptr;
+    BookLog* bookLogsIter = nullptr;
+    uint numbOfBookLogs = 0;
+
     bool waitForReadyRead(int milis);
     QByteArray readAll();
 
@@ -68,8 +72,11 @@ public:
     bool checkCommand(QString&);
     void processReadedUserFromFile(User&);
     void processReadedBookFromFile(Book&);
+    void processReadedBookLogFromFile(BookLog&);
     void addNextPossibleReadId(unsigned long long id);
     void clearMemory();
+    BookLog* getBookLog();
+    void setBookLogs(BookLog*, uint);
 };
 
 #endif // MYTCPSOCKET_HPP

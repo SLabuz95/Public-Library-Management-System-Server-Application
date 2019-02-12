@@ -3,9 +3,10 @@
 #include<QFile>
 #include<QByteArray>
 #include<QTextCodec>
+#include"mytcpsocket.hpp"
 
 App::App(int argc, char** argv)
-    : QCoreApplication (argc, argv), httpServer(this), clientsFilesMenager(this), booksFilesMenager(this)
+    : QCoreApplication (argc, argv), httpServer(this), clientsFilesMenager(this), booksFilesMenager(this), bookLogsFilesMenager(this)
 {
     qDebug() << "Inicjalizacja serwera...\n";
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
@@ -67,6 +68,10 @@ ClientsFilesMenager& App::getClientsFilesMenager(){
 
 BooksFilesMenager& App::getBooksFilesMenager(){
     return booksFilesMenager;
+}
+
+BookLogsFilesMenager& App::getBookLogsFilesMenager(){
+    return bookLogsFilesMenager;
 }
 
 unsigned long long App::strLenForFile(QString &str){
@@ -131,6 +136,12 @@ bool App::eventFilter(QObject *obj, QEvent *ev){
         if(obj == &activityCheckTimer){
             activityCheckTimer.stop();
             checkActivityTimer();
+            if(expirePtr > EXPIRE_PTR_MAX){
+                booksFilesMenager.expireBooks(new MyTcpSocket(new QTcpSocket(), this));
+                expirePtr = 0;
+            }else{
+                expirePtr++;
+            }
             activityCheckTimer.start();
         }
         break;

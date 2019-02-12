@@ -8,7 +8,7 @@
 #define TEMP_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"temp\" !!! -------------"))
 
 #define USER_FAST_ACCESS_STEP (20)
-#define MAX_ACTIVITY_VALUE (10)
+#define MAX_ACTIVITY_VALUE (100)
 
 // Include macros
 
@@ -68,17 +68,19 @@ private:
 
     bool fileOperation = false;
 
-    bool createClientsFile();
     bool createClientsFileBackUp();
-    uint8_t restoreClientsFile();
     void clearMemory();
     bool readNextClient(User&, QFile&);
     bool writeNextClient(User&, QFile&);
     UserParameters checkUserParameters(QString&);
     bool init();
 public:
+    bool createClientsFile();
+    uint8_t restoreClientsFile();
     void addEditRemoveClient(MyTcpSocket* newActualSocket);
+    void addEditRemoveClient(MyTcpSocket* newActualSocket, User& user);
     void readClients(MyTcpSocket* newActualSocket);
+    void readClients(MyTcpSocket* newActualSocket, ReadFileRules& rfr);
     void loginClient(MyTcpSocket* newActualSocket);
     void logoutClient(MyTcpSocket* newActualSocket);
     void extendActivity(MyTcpSocket* newActualSocket);
@@ -92,6 +94,7 @@ public:
 private:
     bool readClientsFile(ReadFileRules& rules);
     bool writeClientsFile();
+    bool writeClientsFile(User& requestUser);
 
     void reallocFastClients(UserFastAccess*, unsigned int);  // Change table
     void insertFastClient(unsigned int index, unsigned long long userId, unsigned long long filePos);

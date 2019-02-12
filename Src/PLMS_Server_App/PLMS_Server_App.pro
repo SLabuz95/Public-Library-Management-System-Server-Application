@@ -13,7 +13,9 @@ SOURCES += \
     readfilerules.cpp \
     mytcpsocket.cpp \
     book.cpp \
-    booksfilesmenager.cpp
+    booksfilesmenager.cpp \
+    booklog.cpp \
+    booklogsfilesmenager.cpp
 
 HEADERS += \
     app.hpp \
@@ -35,4 +37,9 @@ HEADERS += \
     bookstatus.hpp \
     booksfilesmenager.hpp \
     bookcomment.hpp \
-    userpermissions.hpp
+    userpermissions.hpp \
+    booklog.hpp \
+    booklogparameters.hpp \
+    booklogsfilesmenager.hpp \
+    booklogaction.hpp \
+    booktype.hpp

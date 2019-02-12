@@ -15,14 +15,14 @@
 
 enum UserParameters{
     USER_ID,
+    USER_BOOK_ID,
+    USER_PERMISSIONS,
     USER_NAME,
-    USER_PASSWORD,
     USER_FIRST_NAME,
     USER_SECOND_NAME,
     USER_SURNAME,
     USER_PESEL,
-    USER_BOOK_ID,
-    USER_PERMISSIONS,
+    USER_PASSWORD,
     USER_END_PARAMETER_TOKEN,   // Use to catch end of client read
     USER_NUMB_OF_PARAMETERS     // Use to catch errors
 };

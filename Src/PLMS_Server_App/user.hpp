@@ -5,8 +5,8 @@
 #define WRITE_PARAM_TO_FILE(userO, paramN) (userO.getStrForFile(paramN).toUtf8())
 
 // Memory Pointer Macros ------------------------------------------------------------------------------
-#define SET_PTR_DO(ptr, newPtr) {if(ptr) delete ptr; ptr = newPtr;}
-#define SET_PTR_DOA(ptrA, newPtrA) {if(ptrA) delete []ptrA; ptrA = newPtrA;}
+#define SET_PTR_DO(ptr, newPtr) {if(ptr) {delete ptr; ptr = nullptr;} ptr = newPtr;}
+#define SET_PTR_DOA(ptrA, newPtrA) {if(ptrA) {delete []ptrA; ptrA = nullptr;}; ptrA = newPtrA;}
 #define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}
 // Include macros
 //#include "mainmacros.hpp"
