@@ -5,6 +5,7 @@
 #define CHECK_PARAM_RETURN_V(checkStrV, paramNameText, numbOfSigns, returnV) {tempStr.clear(); tempStr = paramNameText; for(i = 0; i < numbOfSigns; i++) if(checkStrV.at(i) != tempStr.at(i)) break; if(i == numbOfSigns) return returnV;}
 #define CHECK_PARAM_NO_RETURN_V(checkStrV, paramNameText, numbOfSigns) {tempStr.clear(); tempStr = paramNameText; for(i = 0; i < numbOfSigns; i++) if(checkStrV.at(i) != tempStr.at(i)) break;}
 #define CHECK_PARAM_INIT QString tempStr; int i = 0;
+#define EXPIRE_PTR_MAX (3600)
 // Include macros
 
 // ----------------------------------------------------------------------
@@ -14,6 +15,7 @@
 #include"httpserver.hpp"
 #include"clientsfilesmenager.hpp"
 #include"booksfilesmenager.hpp"
+#include"booklogsfilesmenager.hpp"
 #include<QTimer>
 
 // ----------------------------------------------------------------------
@@ -38,14 +40,16 @@ private:
     // Elements
     ClientsFilesMenager clientsFilesMenager;
     BooksFilesMenager booksFilesMenager;
+    BookLogsFilesMenager bookLogsFilesMenager;
     HttpServer httpServer;
     QTimer activityCheckTimer;
-
+    uint expirePtr = 0;
 
 public:
     static void readCharUtf8(QFile& file, QString& tempChar);
     ClientsFilesMenager& getClientsFilesMenager();
     BooksFilesMenager& getBooksFilesMenager();
+    BookLogsFilesMenager& getBookLogsFilesMenager();
 
     static unsigned long long strLenForFile(QString&);
 

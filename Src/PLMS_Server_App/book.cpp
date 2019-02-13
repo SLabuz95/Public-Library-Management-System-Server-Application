@@ -26,6 +26,10 @@ BookComment* Book::getBookComments(){
     return bookComments;
 }
 
+BookType Book::getBookType(){
+    return  bookType;
+}
+
 uint Book::getNumbOfBookComments(){
     return numbOfBookComments;
 }
@@ -58,6 +62,15 @@ void Book::setParam(BookParameters bookParam, QString value){
     case BOOK_COMMENT_USER_ID:
         addComment(value.toUInt());
         break;
+    case BOOK_DATE:
+        date = QDateTime::fromString(value, BOOK_DATE_TIME_FORMAT);
+        break;
+    case BOOK_TYPE:
+        bookType = static_cast<BookType>(value.toUInt());
+        break;
+    case BOOK_AUTHOR:
+        author = value;
+        break;
     // _PH_ DONT DELETE THIS PH (Check All Params)
     default:
         break;
@@ -72,6 +85,10 @@ bool Book::checkBookFromFile(){
     if(bookId == 0)
         return true;
     return checkBookParameters();
+}
+
+QDateTime Book::getDate(){
+    return date;
 }
 
 QString Book::getParam(BookParameters bookParam){
@@ -92,6 +109,16 @@ QString Book::getParam(BookParameters bookParam){
         else {
             return QString::number(userId);
         }
+    case BOOK_DATE:
+        if(date.isNull())
+            return  QString();
+        else {
+            return date.toString(BOOK_DATE_TIME_FORMAT);
+        }
+    case BOOK_TYPE:
+        return  QString::number(bookType);
+    case BOOK_AUTHOR:
+        return author;
     default:
         return QString();
     }
@@ -115,6 +142,12 @@ QString Book::getStrForFile(BookParameters bookParam){
         return prepareCommentsPack();
     case BOOK_END_PARAMETER_TOKEN:
         return QString(BOOK_PARAMETERS_BOOK_END_PARAMETER_TOKEN) + QString("=\n");
+    case BOOK_DATE:
+        return QString(BOOK_PARAMETERS_BOOK_DATE) + QString("=\"") + date.toString(BOOK_DATE_TIME_FORMAT) + QString("\"\n");
+    case BOOK_TYPE:
+        return QString(BOOK_PARAMETERS_BOOK_TYPE) + QString("=") + getParam(BOOK_TYPE) + QString("\n");
+    case BOOK_AUTHOR:
+        return QString(BOOK_PARAMETERS_BOOK_AUTHOR) + QString("=\"") + author + QString("\"\n");
     default:
         return QString();
     }
@@ -133,6 +166,12 @@ bool Book::checkBookParameters(){
     // Book Edition
     if(bookEdition.isEmpty())
         return false;
+    // Book Author
+    if(author.isEmpty())
+        return false;
+    // Book Type
+    if(bookType == NUMB_OF_BOOK_TYPES)
+        return false;
     // Book Comments
     if(!checkBookComments())
         return false;
@@ -146,7 +185,7 @@ bool Book::readCommentsFromJson(QJsonArray &jA){
     uint i = 0;
     for(i = 0; i < tempNumbOfBookComments; i++){
         QJsonValue jAValue = jA.at(i);
-        if(jAValue == QJsonValue::Object){
+
             if(jAValue.toObject().value(BOOK_PARAMETERS_BOOK_COMMENTS_USER_ID) != QJsonValue::Undefined){
                 (*(tempBookComments + i)).userId = jAValue.toObject().value(BOOK_PARAMETERS_BOOK_COMMENTS_USER_ID).toString().toULongLong();
                 if((*(tempBookComments + i)).userId == 0)
@@ -160,10 +199,7 @@ bool Book::readCommentsFromJson(QJsonArray &jA){
                     break;
             }else{
                 break;
-            }
-        }else{
-            break;
-        }
+            }        
     }
     if(i < numbOfBookComments){
         SET_PTR_DOA(tempBookComments, nullptr);
@@ -180,7 +216,7 @@ bool Book::readJson(QJsonObject& o){
     if(o.value(BOOK_PARAMETERS_BOOK_ID) != QJsonValue::Undefined)
         bookId = o.value(BOOK_PARAMETERS_BOOK_ID).toString().toULongLong();
     if(o.value(BOOK_PARAMETERS_BOOK_STATUS) != QJsonValue::Undefined)
-        bookStatus = static_cast<BookStatus>(o.value(BOOK_PARAMETERS_BOOK_STATUS).toInt());
+        bookStatus = static_cast<BookStatus>(o.value(BOOK_PARAMETERS_BOOK_STATUS).toString().toUInt());
     if(o.value(BOOK_PARAMETERS_BOOK_TITLE) != QJsonValue::Undefined)
         bookTitle = o.value(BOOK_PARAMETERS_BOOK_TITLE).toString();
     if(o.value(BOOK_PARAMETERS_BOOK_PUBLISHER) != QJsonValue::Undefined)
@@ -189,6 +225,12 @@ bool Book::readJson(QJsonObject& o){
         bookEdition = o.value(BOOK_PARAMETERS_BOOK_EDITION).toString();
     if(o.value(BOOK_PARAMETERS_BOOK_USER_ID) != QJsonValue::Undefined)
         userId = o.value(BOOK_PARAMETERS_BOOK_USER_ID).toString().toULongLong();
+    if(o.value(BOOK_PARAMETERS_BOOK_TYPE) != QJsonValue::Undefined)
+        bookType = static_cast<BookType>(o.value(BOOK_PARAMETERS_BOOK_TYPE).toString().toUInt());
+    if(o.value(BOOK_PARAMETERS_BOOK_AUTHOR) != QJsonValue::Undefined)
+        author = o.value(BOOK_PARAMETERS_BOOK_AUTHOR).toString();
+    if(o.value(BOOK_PARAMETERS_BOOK_DATE) != QJsonValue::Undefined)
+        date = QDateTime::fromString(o.value(BOOK_PARAMETERS_BOOK_DATE).toString(), BOOK_DATE_TIME_FORMAT);
     if(o.value(BOOK_PARAMETERS_BOOK_COMMENTS) != QJsonValue::Undefined){
         QJsonArray jA = o.value(BOOK_PARAMETERS_BOOK_COMMENTS).toArray();
         if(!readCommentsFromJson(jA))
@@ -215,7 +257,6 @@ void Book::removeComment(unsigned long long userId){
     ushort remove = 0;
     if(numbOfBookComments > 1){
         BookComment* temp = new BookComment[numbOfBookComments - 1];
-        ushort remove = 0;
         for(uint i = 0; i < numbOfBookComments; i++){
             if((*(bookComments + i)).userId != userId)
                 (*(temp + i - remove)) = (*(bookComments + i));
@@ -238,6 +279,9 @@ unsigned long long Book::getFileDataStrLength(){
             WRITE_PARAM_TO_FILE((*this), BOOK_TITLE) +
             WRITE_PARAM_TO_FILE((*this), BOOK_PUBLISHER) +
             WRITE_PARAM_TO_FILE((*this), BOOK_EDITION) +
+            WRITE_PARAM_TO_FILE((*this), BOOK_AUTHOR) +
+            WRITE_PARAM_TO_FILE((*this), BOOK_TYPE) +
+            ((!getDate().isNull())? WRITE_PARAM_TO_FILE((*this), BOOK_DATE) : QString()) +
             ((!getParam(BOOK_USER_ID).isEmpty())? WRITE_PARAM_TO_FILE((*this), BOOK_USER_ID) : "") +
             prepareCommentsPack() +
             WRITE_PARAM_TO_FILE((*this), BOOK_END_PARAMETER_TOKEN);     // _PH_ Add additional data if add new one
@@ -255,8 +299,14 @@ void Book::writeJson(QJsonObject& o){
         o.insert(BOOK_PARAMETERS_BOOK_PUBLISHER, bookPublisher);
     if(!bookEdition.isEmpty())
         o.insert(BOOK_PARAMETERS_BOOK_EDITION, bookEdition);
+    if(!author.isEmpty())
+        o.insert(BOOK_PARAMETERS_BOOK_AUTHOR, author);
+    if(bookType != NUMB_OF_BOOK_TYPES)
+        o.insert(BOOK_PARAMETERS_BOOK_TYPE, getParam(BOOK_TYPE));
     if(userId != 0)
         o.insert(BOOK_PARAMETERS_BOOK_USER_ID, getParam(BOOK_USER_ID));
+    if(!date.isNull())
+        o.insert(BOOK_PARAMETERS_BOOK_DATE, getParam(BOOK_DATE));
     if(checkBookComments()){
         QJsonArray jA;
         for(uint i = 0; i < numbOfBookComments; i++){
@@ -280,25 +330,52 @@ QString Book::prepareCommentsPack(){
 
 bool Book::checkBookComments(){
     for(uint i = 0; i < numbOfBookComments; i++){
-        if((*(bookComments + i)).userId == 0 || (*(bookComments + i)).content.isEmpty())
+        if((*(bookComments + i)).userId == 0)
             return false;
     }
     return true;
 }
 
 void Book::merge(Book &book){
+    BookStatus lastState = bookStatus;
     if(!book.getParam(BOOK_TITLE).isEmpty())
         setParam(BOOK_TITLE, book.getParam(BOOK_TITLE));
-    if(bookStatus != NUMB_OF_BOOK_STATUS)
+    if(book.getBookStatus() != NUMB_OF_BOOK_STATUS){
         setParam(BOOK_STATUS, book.getParam(BOOK_STATUS));
+    }
     if(!book.getParam(BOOK_PUBLISHER).isEmpty())
         setParam(BOOK_PUBLISHER, book.getParam(BOOK_PUBLISHER));
     if(!book.getParam(BOOK_EDITION).isEmpty())
         setParam(BOOK_EDITION, book.getParam(BOOK_EDITION));
-    if(book.getParam(BOOK_USER_ID).toULongLong() == userId)
+    if(!book.getParam(BOOK_AUTHOR).isEmpty())
+        setParam(BOOK_AUTHOR, book.getParam(BOOK_AUTHOR));
+    if(book.getBookType() != NUMB_OF_BOOK_TYPES)
+        setParam(BOOK_TYPE, book.getParam(BOOK_TYPE));
+    if(!book.getParam(BOOK_DATE).isEmpty())
+        setParam(BOOK_DATE, book.getParam(BOOK_DATE));
+    if(book.getParam(BOOK_USER_ID).toULongLong() == userId){
         userId = 0;
-    else
-        userId = book.getParam(BOOK_USER_ID).toULongLong();
+        date = QDateTime();
+        bookStatus = BOOK_STATUS_FREE;
+    }
+    else{
+        if(userId == 0){
+            if(bookStatus == BOOK_STATUS_CHECKED_OUT){
+                date = QDateTime::currentDateTime();
+                date = date.addDays(30);
+            }else{
+                date = QDateTime::currentDateTime();
+                date = date.addDays(7);
+            }
+            userId = book.getParam(BOOK_USER_ID).toULongLong();
+        }else{
+            if(lastState == BOOK_STATUS_RESERVED && bookStatus == BOOK_STATUS_CHECKED_OUT)
+            {
+                date = QDateTime::currentDateTime();
+                date = date.addDays(30);
+            }
+        }
+    }
     mergeBookComments(book);
 }
 
@@ -308,8 +385,12 @@ void Book::mergeBookComments(Book &book){
         uint j = 0;
         for(j = 0; j < numbOfBookComments; j++)
             if((*(book.getBookComments() + i)).userId == (*(bookComments + j)).userId){
-                removeComment((*(bookComments + j)).userId);
-                j--;
+                if((*(book.getBookComments() + i)).content.isEmpty()){
+                    removeComment((*(bookComments + j)).userId);
+                    j--;
+                }else{
+                    (*(bookComments + j)).content = (*(book.getBookComments() + i)).content;
+                }
                 break;
             }
         if(j == numbOfBookComments)
@@ -317,3 +398,10 @@ void Book::mergeBookComments(Book &book){
     }
 }
 
+BookComment Book::getBookCommentById(unsigned long long userId){
+    for(uint i = 0; i < numbOfBookComments; i++)
+        if((*(bookComments + i)).userId == userId)
+            return (*(bookComments + i));
+    BookComment bc;
+    return bc;
+}

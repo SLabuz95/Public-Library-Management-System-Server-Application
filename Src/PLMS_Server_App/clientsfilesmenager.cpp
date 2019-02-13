@@ -10,10 +10,12 @@
 #include"mytcpsocket.hpp"
 #include<QTextStream>
 #include<QJsonArray>
+#include<QTextCodec>
 
 ClientsFilesMenager::ClientsFilesMenager(App* parent)
     : parent(parent)
 {
+    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
     if(!init()){
         SERVER_MSG("___CRITICAL INTERNAL SERVER ERROR___");
         SERVER_MSG("Clients file initialization error");
@@ -35,8 +37,17 @@ bool ClientsFilesMenager::createClientsFile(){
         SERVER_MSG(CLIENTS_FILE_OPEN_ERROR_TEXT);
         return false;
     }else{
+        User admin;
         QTextStream stream(&file);
         stream.setCodec("UTF-8");
+        admin.setUserId(1);
+        admin.setParam(USER_NAME, "admin");
+        admin.setParam(USER_PASSWORD, "123");
+        admin.setParam(USER_SURNAME, "Admin");
+        admin.setParam(USER_PESEL, "00000000000");
+        admin.setParam(USER_FIRST_NAME, QString("Domyślny").toUtf8());
+        admin.setParam(USER_PERMISSIONS, QString::number(USER_PERMISSIONS_ADMIN));
+        writeNextClient(admin, file);
         stream << (QString(USER_PARAMETERS_USER_ID) + QString("=0\nend=\n")).toUtf8();
         file.close();
     }
@@ -308,7 +319,19 @@ void ClientsFilesMenager::addEditRemoveClient(MyTcpSocket* newActualSocket){
     actualSocket = newActualSocket;
     fileOperation = true;
     reallocFastClients(nullptr, 0);
-    writeClientsFile();
+    if(!writeClientsFile()){
+        actualSocket->setReturnErrorType(RETURN_ERROR_FILE_ERROR);
+    }
+    fileOperation = false;
+}
+
+void ClientsFilesMenager::addEditRemoveClient(MyTcpSocket* newActualSocket, User& user){
+    actualSocket = newActualSocket;
+    fileOperation = true;
+    reallocFastClients(nullptr, 0);
+    if(!writeClientsFile(user)){
+        actualSocket->setReturnErrorType(RETURN_ERROR_FILE_ERROR);
+    }
     fileOperation = false;
 }
 
@@ -321,9 +344,19 @@ void ClientsFilesMenager::readClients(MyTcpSocket* newActualSocket){
         readClientsFile(rfr);
         fileOperation = false;
     }else {
-        newActualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT); // _PH_ Change to Read File Rules JSON Corrupted
+        newActualSocket->setReturnErrorType(RETURN_ERROR_READ_FILES_RULES_JSON_CORRUPTED);
     }
+}
 
+void ClientsFilesMenager::readClients(MyTcpSocket* newActualSocket, ReadFileRules& rfr){
+    actualSocket = newActualSocket;
+    if(!rfr.isConstructingError()){
+        fileOperation = true;
+        readClientsFile(rfr);
+        fileOperation = false;
+    }else{
+        newActualSocket->setReturnErrorType(RETURN_ERROR_READ_FILES_RULES_JSON_CORRUPTED);
+    }
 }
 
 void ClientsFilesMenager::loginClient(MyTcpSocket *newActualSocket){
@@ -331,20 +364,21 @@ void ClientsFilesMenager::loginClient(MyTcpSocket *newActualSocket){
     User user(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toArray().at(0).toObject());
     if(user.getParam(USER_NAME).isEmpty() || user.getParam(USER_PASSWORD).isEmpty())
     {
-        actualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT);  // // _PH_ CHANGE to  User JSON Corrupted
+        actualSocket->setReturnErrorType(RETURN_ERROR_USER_JSON_CORRUPTED);
     }else{
         QJsonArray filterArr;
-        QJsonObject filterObj;
-        filterObj.insert(READ_FILE_RULES_FILTER_PARAM_TEXT, USER_NAME);
+        QJsonObject filterObj;        
+        filterObj.insert(READ_FILE_RULES_FILTER_PARAM_TEXT, QString::number(USER_NAME));
         filterObj.insert(READ_FILE_RULES_FILTER_VALUE_TEXT, user.getParam(USER_NAME));
         filterArr.append(filterObj);
         filterObj = QJsonObject();
-        filterObj.insert(READ_FILE_RULES_FILTER_PARAM_TEXT, USER_PASSWORD);
+        filterObj.insert(READ_FILE_RULES_FILTER_PARAM_TEXT, QString::number(USER_PASSWORD));
         filterObj.insert(READ_FILE_RULES_FILTER_VALUE_TEXT, user.getParam(USER_PASSWORD));
         filterArr.append(filterObj);
         filterObj = QJsonObject();
-        filterObj.insert(READ_FILE_RULES_FILE_TYPE_TEXT, FILE_TYPE_CLIENTS_FILE);
-        filterObj.insert(READ_FILE_RULES_MAX_READ_TEXT, 1);
+        filterObj.insert(READ_FILE_RULES_FILE_TYPE_TEXT, QString::number(FILE_TYPE_CLIENTS_FILE));
+        filterObj.insert(READ_FILE_RULES_MAX_READ_TEXT, QString("1"));
+        filterObj.insert(READ_FILE_RULES_FULL_FILTER, QString::number(1));
         filterObj.insert(READ_FILE_RULES_FILTER_TEXT, filterArr);
         ReadFileRules rfr(filterObj, parent);
         if(!rfr.isConstructingError()){
@@ -352,13 +386,13 @@ void ClientsFilesMenager::loginClient(MyTcpSocket *newActualSocket){
             readClientsFile(rfr);
             fileOperation = false;
         }else {
-            newActualSocket->setReturnErrorType(RETURN_ERROR_JSON_USER_NOT_SENT); // _PH_ Change to Read File Rules JSON Corrupted
+            newActualSocket->setReturnErrorType(RETURN_ERROR_READ_FILES_RULES_JSON_CORRUPTED);
         }
     }
 }
 
 void ClientsFilesMenager::logoutClient(MyTcpSocket *newActualSocket){
-    newActualSocket = actualSocket;
+    actualSocket = newActualSocket;
     QJsonArray jA = actualSocket->requestData.value(USER_PARAMETERS_USER_ID).toArray();
     uint jALen = jA.count();
     fileOperation = true;
@@ -371,22 +405,29 @@ void ClientsFilesMenager::logoutClient(MyTcpSocket *newActualSocket){
 }
 
 void ClientsFilesMenager::extendActivity(MyTcpSocket *newActualSocket){
-    newActualSocket = actualSocket;
+    actualSocket = newActualSocket;
     QJsonArray jsonA = actualSocket->requestData.value(USER_PARAMETERS_USER_ID).toArray();
+    QJsonArray retJsonA;
     uint aLen = jsonA.count();
     for(uint j = 0; j < aLen; j++){
         unsigned long long tempId = jsonA.at(j).toString().toULongLong();
         for(uint i = 0;  i < numbOfLoggedUsers; i++){
             if((*(loggedUsers + i)).id == tempId){
+                retJsonA.append(QString::number(tempId));
                 (*(loggedUsers + i)).activity = MAX_ACTIVITY_VALUE;
                 break;
             }
         }
     }
-
+    actualSocket->returnData.insert(USER_PARAMETERS_USER_ID, retJsonA);
 }
 
 bool ClientsFilesMenager::writeClientsFile(){
+    if(!createClientsFileBackUp()){
+        actualSocket->setReturnErrorType(RETURN_ERROR_FILE_NOT_REMOVED);
+        SERVER_MSG("--- Client File Read Failed ---");
+        return true;
+    }
     // Reading Rules for Write File
     ReadFileRules readFileRules(FILE_TYPE_CLIENTS_FILE, parent);
     filePos = 0;    // Reset File Position Pointer
@@ -420,6 +461,7 @@ bool ClientsFilesMenager::writeClientsFile(){
         }else{
             User tempUser;
             User requestUser(actualSocket->requestData.value(USER_JSON_KEY_TEXT).toArray().at(0).toObject());
+            bool addClient = (requestUser.getUserId() == 0);
             unsigned long long lastId = 0;
             do{
                 if(!readNextClient(tempUser, file))
@@ -443,36 +485,44 @@ bool ClientsFilesMenager::writeClientsFile(){
                     insertFastClient(static_cast<unsigned int>(idCounter / USER_FAST_ACCESS_STEP), tempUser.getUserId(), filePos);
 
                 // LoggedUser Reallocation
-                insertFastLoggedClient(tempUser.getUserId(), filePos);
+                for(uint i = 0 ; i < numbOfLoggedUsers; i++){
+                    if(tempUser.getUserId() != 0 && (*(loggedUsers + i)).id == tempUser.getUserId()){
+                        insertFastLoggedClient(tempUser.getUserId(), filePos);
+                    }
+                }
                 filePos += tempUser.getFileDataStrLength();
                 // ------------------------------------------
 
-                if(requestUser.getUserId() == 0){
+                if(addClient){
                     // Check if readed from file user have the same PESEL number as requestUser
                     if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
                         SERVER_MSG("There is a user with the same PESEL name");
                         file.close();
                         newFile.close();
+                        actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
                         SERVER_MSG("--- Client File Read Failed ---");
-                        return false;
+                        return true;
                     }
                     // Check if readed from file user have the same user name as requestUser
                     if(requestUser.getParam(USER_NAME) == tempUser.getParam(USER_NAME)){
                         SERVER_MSG("There is a user with the same user name");
                         file.close();
                         newFile.close();
+                        actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
                         SERVER_MSG("--- Client File Read Failed ---");
-                        return false;
+                        return true;
                     }
                     if(!userFound){
                         if(lastId + 1 < tempUser.getUserId()){
                             requestUser.setUserId(lastId + 1);
                             writeNextClient(requestUser, newFile);
+                            actualSocket->processReadedUserFromFile(requestUser);
                             userFound = true;
                         }else{
                             if(tempUser.getUserId() == 0){
                                 requestUser.setUserId(lastId + 1);
                                 writeNextClient(requestUser, newFile);
+                                actualSocket->processReadedUserFromFile(requestUser);
                                 userFound = true;
                             }
                         }
@@ -482,28 +532,33 @@ bool ClientsFilesMenager::writeClientsFile(){
                 }else{
                     switch(actualSocket->getCmdType()){
                     case COMMAND_TYPE_CLIENT_EDIT:
-                        if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL) && requestUser.getUserId() != tempUser.getUserId()){
+                        SERVER_MSG(requestUser.getParam(USER_PESEL));
+                        SERVER_MSG(tempUser.getParam(USER_PESEL));
+                        if(tempUser.getUserId() != 0 && requestUser.getUserId() != tempUser.getUserId() && requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
                             // There is a user with the same pesel number
                             SERVER_MSG("There is a user with the same PESEL name");
                             file.close();
                             newFile.close();
+                            actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
                             SERVER_MSG("--- Client File Read Failed ---");
-                            return false;
+                            return true;
                         }
                         // Check if readed from file user have the same user name as requestUser
-                        if(requestUser.getParam(USER_NAME) == tempUser.getParam(USER_NAME) && requestUser.getUserId() != tempUser.getUserId()){
+                        if(tempUser.getUserId() != 0 && requestUser.getUserId() != tempUser.getUserId() && requestUser.getParam(USER_NAME) == tempUser.getParam(USER_NAME)){
                             SERVER_MSG("There is a user with the same user name");
                             file.close();
                             newFile.close();
+                            actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
                             SERVER_MSG("--- Client File Read Failed ---");
-                            return false;
+                            return true;
                         }
                         if(requestUser.getUserId() == tempUser.getUserId()){
                             if(userFound){
                                 file.close();
                                 newFile.close();
+                                actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
                                 SERVER_MSG("--- Client File Read Failed ---");
-                                return false;
+                                return true;
                             }
                             tempUser.merge(requestUser);
                             writeNextClient(tempUser, newFile);
@@ -513,7 +568,211 @@ bool ClientsFilesMenager::writeClientsFile(){
                         }                    
                         break;
                     case COMMAND_TYPE_CLIENT_REMOVE:
+                    if(tempUser.getUserId() != 0 && requestUser.getUserId() == tempUser.getUserId() && requestUser.getUserId() != 0){
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_ACTION, QString::number(BOOK_LOG_ACTION_REMOVE_USER));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_PESEL, tempUser.getParam(USER_PESEL));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_SURNAME, tempUser.getParam(USER_SURNAME));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_FIRST_NAME, tempUser.getParam(USER_FIRST_NAME));
+                            requestUser.setParam(USER_ID, QString("0"));
+                            userFound = true;// For Information Purpose (Catch Not Found User Error)
+                     }else{
+                            writeNextClient(tempUser, newFile);
+                     }
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+            }while(readFileRules.check(tempUser, actualSocket));
+            newFile.close();
+            if(!userFound){
+                actualSocket->setReturnErrorType(RETURN_ERROR_USER_NOT_FOUND);
+                file.close();
+                SERVER_MSG("--- Client File Read Failed ---");
+                return true;
+            }
+        }
+        file.close();
+        if(!file.remove()){
+            actualSocket->setReturnErrorType(RETURN_ERROR_FILE_NOT_REMOVED);
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
+        if(!newFile.rename(CLIENTS_FILE_NAME)){
+            actualSocket->setReturnErrorType(RETURN_ERROR_FILE_NOT_REMOVED);
+            SERVER_MSG("--- Client File Read Failed ---");
+            return true;
+        }
+        SERVER_MSG("--- Temp File Write Success");
+    }
+    return true;
+}
+
+bool ClientsFilesMenager::writeClientsFile(User& requestUser){
+    if(!createClientsFileBackUp()){
+        actualSocket->setReturnErrorType(RETURN_ERROR_FILE_NOT_REMOVED);
+        SERVER_MSG("--- Client File Read Failed ---");
+        return true;
+    }
+    // Reading Rules for Write File
+    ReadFileRules readFileRules(FILE_TYPE_CLIENTS_FILE, parent);
+    filePos = 0;    // Reset File Position Pointer
+    unsigned long long idCounter = 0;
+    QFile file(CLIENTS_FILE_NAME);
+    if(!file.exists()){
+        switch(restoreClientsFile()){
+        case 1: // No BackUp
+            if(!createClientsFile()) // Creating Error
+                return false;
+            break;
+        case 2: // Open File Error
+            return false;
+        default:    // Restored File
+            break;
+        }
+    }
+    bool userFound = false;
+    QFile newFile(TEMP_FILE_NAME);
+    newFile.remove();
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){  // File Not Open Error
+        SERVER_MSG(CLIENTS_FILE_OPEN_ERROR_TEXT);
+        return false;
+    }else{
+        SERVER_MSG("--- Temp File Writing Start ---");
+        if(!newFile.open(QIODevice::WriteOnly | QIODevice::Text)){
+            SERVER_MSG(TEMP_FILE_OPEN_ERROR_TEXT);
+            file.close();
+            SERVER_MSG("--- Client File Closed");
+            return false;
+        }else{
+            User tempUser;
+            bool addClient = (requestUser.getUserId() == 0);
+            unsigned long long lastId = 0;
+            do{
+                if(!readNextClient(tempUser, file))
+                {
+                    file.close();
+                    newFile.close();
+                    SERVER_MSG("--- Client File Read Failed ---");
+                    return false; // READING ERROR
+                }
+                if(!tempUser.checkUserFromFile()){
+                    // Fail of user check (Depends of command type)
+                    file.close();
+                    newFile.close();
+                    SERVER_MSG("--- Client File Read Failed ---");
+                    return false;
+                }
+                if(tempUser.getUserId() == 0){
+                    writeNextClient(tempUser, newFile);
+                    break;
+                }
+                // Fast Access Reallocation --------------
+                // UserFastAccess Reallocation
+                idCounter++;
+                if(idCounter % USER_FAST_ACCESS_STEP == 1 && tempUser.getUserId() != 0)
+                    insertFastClient(static_cast<unsigned int>(idCounter / USER_FAST_ACCESS_STEP), tempUser.getUserId(), filePos);
+
+                // LoggedUser Reallocation
+                for(uint i = 0 ; i < numbOfLoggedUsers; i++){
+                    if((*(loggedUsers + i)).id == tempUser.getUserId()){
+                        insertFastLoggedClient(tempUser.getUserId(), filePos);
+                    }
+                }
+                filePos += tempUser.getFileDataStrLength();
+                // ------------------------------------------
+
+                if(addClient){
+                    // Check if readed from file user have the same PESEL number as requestUser
+                    if(requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
+                        SERVER_MSG("There is a user with the same PESEL name");
+                        file.close();
+                        newFile.close();
+                        actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return true;
+                    }
+                    // Check if readed from file user have the same user name as requestUser
+                    if(requestUser.getParam(USER_NAME) == tempUser.getParam(USER_NAME)){
+                        SERVER_MSG("There is a user with the same user name");
+                        file.close();
+                        newFile.close();
+                        actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
+                        SERVER_MSG("--- Client File Read Failed ---");
+                        return true;
+                    }
+                    if(!userFound){
+                        if(lastId + 1 < tempUser.getUserId()){
+                            requestUser.setUserId(lastId + 1);
+                            writeNextClient(requestUser, newFile);
+                            actualSocket->processReadedUserFromFile(requestUser);
+                            userFound = true;
+                        }else{
+                            if(tempUser.getUserId() == 0){
+                                requestUser.setUserId(lastId + 1);
+                                writeNextClient(requestUser, newFile);
+                                actualSocket->processReadedUserFromFile(requestUser);
+                                userFound = true;
+                            }
+                        }
+                    }
+                    lastId = tempUser.getUserId();
+                    writeNextClient(tempUser, newFile);
+                }else{
+                    switch(actualSocket->getCmdType()){
+                    case COMMAND_TYPE_BOOK_RETURN:
+                    case COMMAND_TYPE_BOOK_CHECKOUT:
+                    case COMMAND_TYPE_BOOK_RESERVE:
+                    case COMMAND_TYPE_CLIENT_EDIT:
+                        SERVER_MSG(requestUser.getParam(USER_PESEL));
+                        SERVER_MSG(tempUser.getParam(USER_PESEL));
+                        if(tempUser.getUserId() != 0 && requestUser.getUserId() != tempUser.getUserId() && requestUser.getParam(USER_PESEL) == tempUser.getParam(USER_PESEL)){
+                            // There is a user with the same pesel number
+                            SERVER_MSG("There is a user with the same PESEL name");
+                            file.close();
+                            newFile.close();
+                            actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
+                            SERVER_MSG("--- Client File Read Failed ---");
+                            return true;
+                        }
+                        // Check if readed from file user have the same user name as requestUser
+                        if(tempUser.getUserId() != 0 && requestUser.getUserId() != tempUser.getUserId() && requestUser.getParam(USER_NAME) == tempUser.getParam(USER_NAME)){
+                            SERVER_MSG("There is a user with the same user name");
+                            file.close();
+                            newFile.close();
+                            actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
+                            SERVER_MSG("--- Client File Read Failed ---");
+                            return true;
+                        }
+                        if(requestUser.getUserId() == tempUser.getUserId()){
+                            if(userFound){
+                                file.close();
+                                newFile.close();
+                                actualSocket->setReturnErrorType(RETURN_ERROR_USER_FOUND);
+                                SERVER_MSG("--- Client File Read Failed ---");
+                                return true;
+                            }
+                            if(actualSocket->getCmdType() == COMMAND_TYPE_BOOK_RETURN || actualSocket->getCmdType() == COMMAND_TYPE_BOOK_RESERVE || actualSocket->getCmdType() == COMMAND_TYPE_BOOK_CHECKOUT){
+                                actualSocket->getBookLog()->setParam(BOOK_LOG_USER_PESEL, tempUser.getParam(USER_PESEL));
+                                actualSocket->getBookLog()->setParam(BOOK_LOG_USER_SURNAME, tempUser.getParam(USER_SURNAME));
+                                actualSocket->getBookLog()->setParam(BOOK_LOG_USER_FIRST_NAME, tempUser.getParam(USER_FIRST_NAME));
+                                actualSocket->getBookLog()->setParam(BOOK_LOG_USER_PERMISSIONS, tempUser.getParam(USER_PERMISSIONS));
+                            }
+                            tempUser.merge(requestUser);
+                            writeNextClient(tempUser, newFile);
+                            userFound = true;    // For Information Purpose (Catch Not Found User Error)
+                        }else {
+                            writeNextClient(tempUser, newFile);
+                        }
+                        break;
+                    case COMMAND_TYPE_CLIENT_REMOVE:
                     if(requestUser.getUserId() == tempUser.getUserId() && requestUser.getUserId() != 0){
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_ACTION, QString::number(BOOK_LOG_ACTION_REMOVE_USER));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_PESEL, tempUser.getParam(USER_PESEL));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_SURNAME, tempUser.getParam(USER_SURNAME));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_FIRST_NAME, tempUser.getParam(USER_FIRST_NAME));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_PERMISSIONS, tempUser.getParam(USER_PERMISSIONS));
                             requestUser.setParam(USER_ID, QString("0"));
                             userFound = true;// For Information Purpose (Catch Not Found User Error)
                      }else{
@@ -527,7 +786,7 @@ bool ClientsFilesMenager::writeClientsFile(){
             }while(readFileRules.check(tempUser, actualSocket));
             newFile.close();
             if(!userFound){
-                actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to USER_NOT_FOUND
+                actualSocket->setReturnErrorType(RETURN_ERROR_USER_NOT_FOUND);
                 file.close();
                 SERVER_MSG("--- Client File Read Failed ---");
                 return true;
@@ -535,17 +794,12 @@ bool ClientsFilesMenager::writeClientsFile(){
         }
         file.close();
         if(!file.remove()){
-            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            actualSocket->setReturnErrorType(RETURN_ERROR_FILE_NOT_REMOVED);
             SERVER_MSG("--- Client File Read Failed ---");
             return true;
         }
         if(!newFile.rename(CLIENTS_FILE_NAME)){
-            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
-            SERVER_MSG("--- Client File Read Failed ---");
-            return true;
-        }
-        if(!createClientsFileBackUp()){
-            actualSocket->setReturnErrorType(RETURN_ERROR_WRONG_COMMAND);   // _PH_ Change to FILE_NOT_REMOVED
+            actualSocket->setReturnErrorType(RETURN_ERROR_FILE_NOT_REMOVED);
             SERVER_MSG("--- Client File Read Failed ---");
             return true;
         }
@@ -624,11 +878,12 @@ void ClientsFilesMenager::insertFastLoggedClient(unsigned long long userId, unsi
     (*(tempPtr + numbOfLoggedUsers)).filePosition = filePos;
     SET_PTR_DOA(loggedUsers, tempPtr);
     numbOfLoggedUsers++;
-    qDebug() << numbOfLoggedUsers;
 }
 
 void ClientsFilesMenager::removeFastLoggedClient(unsigned long long userId){
     ushort remove = 0;
+    if(numbOfLoggedUsers == 0)
+        return;
     if(numbOfLoggedUsers > 1){
         UserLoggedFastAccess* temp = new UserLoggedFastAccess[numbOfLoggedUsers - 1];        
         for(unsigned int i = 0; i < numbOfLoggedUsers; i++){

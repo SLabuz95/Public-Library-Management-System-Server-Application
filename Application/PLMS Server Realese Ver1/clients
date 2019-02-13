@@ -1,0 +1,10 @@
+clientId=1
+name="admin"
+password="123"
+pesel="00000000000"
+firstName="Domyślny"
+surname="Admin"
+userPerm=2
+end=
+clientId=0
+end=

@@ -59,18 +59,18 @@ private:
 
     unsigned long long filePos = 0;
 
-    bool createBooksFile();
     bool createBooksFileBackUp();
-    uint8_t restoreBooksFile();
     void clearMemory();
     bool readNextBook(Book&, QFile&);
     bool writeNextBook(Book&, QFile&);
     BookParameters checkBookParameters(QString&);
     bool init();
 public:
+    bool createBooksFile();
     void addEditRemoveBook(MyTcpSocket* newActualSocket);
     void readBooks(MyTcpSocket* newActualSocket);
-
+    uint8_t restoreBooksFile();
+    bool expireBooks(MyTcpSocket* newActualSocket);
 private:
     bool readBooksFile(ReadFileRules& rules);
     bool writeBooksFile();
