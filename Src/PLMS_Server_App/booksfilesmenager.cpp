@@ -482,6 +482,7 @@ bool BooksFilesMenager::writeBooksFile(){
         }else{
             Book tempBook;
             Book requestBook(actualSocket->requestData.value(BOOK_JSON_KEY_TEXT).toArray().at(0).toObject());
+            bool addBook = (requestBook.getBookId() == 0);
             unsigned long long lastId = 0;
             do{
                 if(!readNextBook(tempBook, file))
@@ -506,7 +507,7 @@ bool BooksFilesMenager::writeBooksFile(){
 
                 // ------------------------------------------
 
-                if(requestBook.getBookId() == 0){
+                if(addBook){
                     // Check if readed from file book have the same title, publisher and edition as requestBook
                     if(requestBook.getParam(BOOK_AUTHOR) == tempBook.getParam(BOOK_AUTHOR) && requestBook.getParam(BOOK_TITLE) == tempBook.getParam(BOOK_TITLE) && requestBook.getParam(BOOK_PUBLISHER) == tempBook.getParam(BOOK_PUBLISHER) && requestBook.getParam(BOOK_EDITION) == tempBook.getParam(BOOK_EDITION)){
                         SERVER_MSG("There is a book with the same title, publisher and edition");
@@ -563,6 +564,11 @@ bool BooksFilesMenager::writeBooksFile(){
                                 actualSocket->getBookLog()->setParam(BOOK_LOG_USER_ID_COMMENT, tempBook.getParam(BOOK_USER_ID));
                             }
                             if(actualSocket->getCmdType() == COMMAND_TYPE_BOOK_COMMENT_REMOVE){
+                                BookComment bc = tempBook.getBookCommentById((*requestBook.getBookComments()).userId);
+                                actualSocket->getBookLog()->setParam(BOOK_LOG_USER_ID_COMMENT, QString::number(bc.userId));
+                                actualSocket->getBookLog()->setParam(BOOK_LOG_COMMENT_CONTENT, bc.content);
+                            }
+                            if(actualSocket->getCmdType() == COMMAND_TYPE_BOOK_COMMENT_ADD_EDIT){
                                 BookComment bc = tempBook.getBookCommentById((*requestBook.getBookComments()).userId);
                                 actualSocket->getBookLog()->setParam(BOOK_LOG_USER_ID_COMMENT, QString::number(bc.userId));
                                 actualSocket->getBookLog()->setParam(BOOK_LOG_COMMENT_CONTENT, bc.content);

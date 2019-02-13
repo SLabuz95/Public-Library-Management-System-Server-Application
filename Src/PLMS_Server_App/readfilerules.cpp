@@ -444,6 +444,32 @@ void ReadFileRules::readJson(QJsonObject& o){
             }
         }
             break;
+        case FILE_TYPE_BOOK_LOG_FILE:
+        {
+            QJsonObject tempFilterObj;
+            fileTypeFilter.bookLogsFileFilter = new BookLogsFileFilter[numbOfFilters];
+            for(int i = 0; i < numbOfFilters; i++){
+                if(a.at(i) != QJsonValue::Undefined){
+                    tempFilterObj = a.at(i).toObject();
+                }else{
+                    constructingError = true;
+                    return;
+                }
+                if(tempFilterObj.value(READ_FILE_RULES_FILTER_PARAM_TEXT) != QJsonValue::Undefined){
+                    (*(fileTypeFilter.bookLogsFileFilter + i)).param = static_cast<BookLogParameters>(tempFilterObj.value(READ_FILE_RULES_FILTER_PARAM_TEXT).toString().toUInt());
+                }else{
+                    constructingError = true;
+                    return;
+                }
+                if(tempFilterObj.value(READ_FILE_RULES_FILTER_VALUE_TEXT) != QJsonValue::Undefined){
+                    (*(fileTypeFilter.bookLogsFileFilter + i)).filterStr = tempFilterObj.value(READ_FILE_RULES_FILTER_VALUE_TEXT).toString();
+                }else{
+                    constructingError = true;
+                    return;
+                }
+            }
+        }
+            break;
         default:
             break;
         }

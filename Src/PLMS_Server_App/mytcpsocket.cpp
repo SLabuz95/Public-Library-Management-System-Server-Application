@@ -440,15 +440,15 @@ void MyTcpSocket::process(){
             }
             {
                 User user(jA.at(0).toObject());
-                if(user.getUserId() != 0 || !user.checkUserParameters()){
+                if(user.getUserId() == 0 || !user.checkUserParameters()){
                     returnErrorType = RETURN_ERROR_USER_JSON_CORRUPTED;
+                    break;
                 }
                 bookLogs->setParam(BOOK_LOG_USER_PESEL, user.getParam(USER_PESEL));
                 bookLogs->setParam(BOOK_LOG_USER_SURNAME, user.getParam(USER_SURNAME));
                 bookLogs->setParam(BOOK_LOG_USER_FIRST_NAME, user.getParam(USER_FIRST_NAME));
                 bookLogs->setParam(BOOK_LOG_USER_PERMISSIONS, user.getParam(USER_PERMISSIONS));
             }
-            QJsonArray jA;
             if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
                 returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT;
                 break;
@@ -458,7 +458,6 @@ void MyTcpSocket::process(){
                     returnErrorType = RETURN_ERROR_BOOK_JSON_CORRUPTED;
                     break;
                 }
-
                     Book book(jA.at(0).toObject());
                     if(book.getBookId() == 0){
                         returnErrorType = RETURN_ERROR_BOOK_JSON_CORRUPTED;
@@ -471,9 +470,10 @@ void MyTcpSocket::process(){
                 }
                 User user;
                 user.setParam(USER_ID, bookLogs->getParam(BOOK_LOG_USER_ID_COMMENT));
-                user.setParam(USER_BOOK_ID, book.getParam(BOOK_ID));
+                user.setParam(USER_BOOK_ID, book.getParam(BOOK_ID));                
                 bookLogs->setParam(BOOK_LOG_USER_ID_COMMENT, QString("0"));
-                app->getClientsFilesMenager().addEditRemoveClient(this, user);
+                if(user.getUserId() != 0)
+                    app->getClientsFilesMenager().addEditRemoveClient(this, user);
                 if(returnErrorType != RETURN_ERROR_NO_ERROR){
                     switch(app->getClientsFilesMenager().restoreClientsFile()){
                     case 1: // No BackUp
@@ -839,7 +839,7 @@ void MyTcpSocket::process(){
         }
         returnUsers_Books = new QJsonArray();
         app->getBookLogsFilesMenager().readBookLogs(this);
-        returnData.insert(BOOK_JSON_KEY_TEXT, *returnUsers_Books);
+        returnData.insert(BOOK_LOG_JSON_KEY_TEXT, *returnUsers_Books);
         SET_PTR_DO(returnUsers_Books, nullptr);
     }
         break;
@@ -1004,6 +1004,7 @@ BookLog* MyTcpSocket::getBookLog(){
 
 void MyTcpSocket::processReadedUserFromFile(User &user){
     switch(cmdType){
+    case COMMAND_TYPE_BOOK_COMMENT_REMOVE:
     case COMMAND_TYPE_BOOK_COMMENT_ADD_EDIT:
     {
         bookLogs->setParam(BOOK_LOG_USER_PESEL, user.getParam(USER_PESEL));

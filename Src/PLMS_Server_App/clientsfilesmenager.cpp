@@ -772,6 +772,7 @@ bool ClientsFilesMenager::writeClientsFile(User& requestUser){
                             actualSocket->getBookLog()->setParam(BOOK_LOG_USER_PESEL, tempUser.getParam(USER_PESEL));
                             actualSocket->getBookLog()->setParam(BOOK_LOG_USER_SURNAME, tempUser.getParam(USER_SURNAME));
                             actualSocket->getBookLog()->setParam(BOOK_LOG_USER_FIRST_NAME, tempUser.getParam(USER_FIRST_NAME));
+                            actualSocket->getBookLog()->setParam(BOOK_LOG_USER_PERMISSIONS, tempUser.getParam(USER_PERMISSIONS));
                             requestUser.setParam(USER_ID, QString("0"));
                             userFound = true;// For Information Purpose (Catch Not Found User Error)
                      }else{
@@ -877,7 +878,6 @@ void ClientsFilesMenager::insertFastLoggedClient(unsigned long long userId, unsi
     (*(tempPtr + numbOfLoggedUsers)).filePosition = filePos;
     SET_PTR_DOA(loggedUsers, tempPtr);
     numbOfLoggedUsers++;
-    qDebug() << numbOfLoggedUsers;
 }
 
 void ClientsFilesMenager::removeFastLoggedClient(unsigned long long userId){
@@ -900,7 +900,6 @@ void ClientsFilesMenager::removeFastLoggedClient(unsigned long long userId){
         }
     }
     numbOfLoggedUsers -= remove;
-    qDebug() << numbOfLoggedUsers;
 }
 
 void ClientsFilesMenager::checkOrReduceActivity(){

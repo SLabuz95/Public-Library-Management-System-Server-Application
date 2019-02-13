@@ -2,7 +2,7 @@
 #include"app.hpp"
 #include"readfilerules.hpp"
 #include<QFile>
-#include"bookLog.hpp"
+#include"booklog.hpp"
 #include<QDebug>
 #include"filereadingstatenum.hpp"
 #include<QJsonObject>

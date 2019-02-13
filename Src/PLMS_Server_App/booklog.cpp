@@ -147,7 +147,7 @@ bool BookLog::readJson(QJsonObject& o){
     if(o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_USER_FIRST_NAME) != QJsonValue::Undefined)
         firstName = o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_USER_FIRST_NAME).toString();
     if(o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_USER_PERMISSIONS) != QJsonValue::Undefined)
-        action = static_cast<BookLogAction>(o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_USER_PERMISSIONS).toString().toUInt());
+        permissions = static_cast<UserPermissions>(o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_USER_PERMISSIONS).toString().toUInt());
     if(o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_BOOK_ID) != QJsonValue::Undefined)
         bookId = o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_BOOK_ID).toString().toULongLong();
     if(o.value(BOOK_LOG_PARAMETERS_BOOK_LOG_COMMENT_CONTENT) != QJsonValue::Undefined)

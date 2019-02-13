@@ -246,7 +246,7 @@ void User::mergeBookId(User &user){
     for(uint i = 0; i < userNoBI; i++){
         uint j = 0;
         for(j = 0; j < numbOfBookId; j++)
-            if((*(user.getBookId() + i)) == 0){
+            if((*(user.getBookId() + i)) == (*(bookId + j))){
                 removeBookId((*(bookId + j)));
                 j--;
                 break;
