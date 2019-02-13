@@ -1,0 +1,84 @@
+#ifndef BOOKSFILESMENAGER_HPP
+#define BOOKSFILESMENAGER_HPP
+
+// ------------------ Macros --------------------------------------------
+#define BOOKS_FILE_NAME (QString("books"))
+#define BOOKS_FILE_BACKUP_NAME (QString("booksBU"))
+#define TEMP_FILE_NAME (QString("tempB"))
+#define BOOKS_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"books\" !!! -------------"))
+#define TEMP_FILE_OPEN_ERROR_TEXT (QString("-----------!!! Błąd otwarcia pliku \"tempB\" !!! -------------"))
+
+#define BOOK_FAST_ACCESS_STEP (20)
+
+// Include macros
+
+// ----------------------------------------------------------------------
+
+// ------------------ Includes ------------------------------------------
+#include<stdint.h>
+#include"bookparameters.hpp"
+// ----------------------------------------------------------------------
+
+// ------------------ Predefinitions ------------------------------------
+class App;
+class Book;
+class QFile;
+class ReadFileRules;
+class QString;
+class MyTcpSocket;
+// ----------------------------------------------------------------------
+
+// ------------------ BooksFilesMenager Class -----------------------------------------
+
+struct BookFastAccess{
+    unsigned long long id = 0;
+    unsigned long long filePosition = 0;
+};
+
+class BooksFilesMenager{
+
+public:
+    // Constructor
+    BooksFilesMenager(App*);
+
+    // Destructor
+    ~BooksFilesMenager();
+
+private:
+
+    // Parent
+    App* parent = nullptr;  // DONT DELETE
+
+    // Actual TcpSocket
+    MyTcpSocket* actualSocket = nullptr;    // DONT DELETE
+
+    // Fast Access Table
+    BookFastAccess* bookFastAccess = nullptr;
+    unsigned int numbOfBookFastAccess = 0;
+    bool allocBookFastAccess = false;
+
+    unsigned long long filePos = 0;
+
+    bool createBooksFileBackUp();
+    void clearMemory();
+    bool readNextBook(Book&, QFile&);
+    bool writeNextBook(Book&, QFile&);
+    BookParameters checkBookParameters(QString&);
+    bool init();
+public:
+    bool createBooksFile();
+    void addEditRemoveBook(MyTcpSocket* newActualSocket);
+    void readBooks(MyTcpSocket* newActualSocket);
+    uint8_t restoreBooksFile();
+    bool expireBooks(MyTcpSocket* newActualSocket);
+private:
+    bool readBooksFile(ReadFileRules& rules);
+    bool writeBooksFile();
+
+    void reallocFastBooks(BookFastAccess*, unsigned int);  // Change table
+    void insertFastBook(unsigned int index, unsigned long long userId, unsigned long long filePos);
+
+    unsigned long long getFilePos(unsigned long long id);
+};
+
+#endif // BOOKSFILESMENAGER_HPP
