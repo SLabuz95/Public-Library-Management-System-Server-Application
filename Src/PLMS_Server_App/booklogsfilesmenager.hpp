@@ -28,8 +28,6 @@ class MyTcpSocket;
 // ----------------------------------------------------------------------
 
 // ------------------ BooksFilesMenager Class -----------------------------------------
-
-
 class BookLogsFilesMenager{
 
 public:

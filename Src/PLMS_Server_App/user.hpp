@@ -10,7 +10,6 @@
 #define SET_PTR_NDO(ptr, newPtr) {ptr = newPtr;}
 // Include macros
 //#include "mainmacros.hpp"
-
 // ----------------------------------------------------------------------
 
 // ------------------ Includes ------------------------------------------
