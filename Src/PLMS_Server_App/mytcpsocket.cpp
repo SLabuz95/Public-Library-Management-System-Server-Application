@@ -16,7 +16,7 @@ MyTcpSocket::MyTcpSocket(QTcpSocket* tcpSocket, App* app)
 MyTcpSocket::~MyTcpSocket(){
     tcpSocket->disconnectFromHost();
     if(tcpSocket->state() == QAbstractSocket::UnconnectedState || tcpSocket->waitForDisconnected(3000))
-        qDebug() << "Socket disconnected";
+        SERVER_MSG("!------ Socket Disconnected -------!")
     tcpSocket->close();
     tcpSocket->deleteLater();
     clearMemory();
@@ -247,14 +247,16 @@ void MyTcpSocket::process(){
     if(returnErrorType != RETURN_ERROR_NO_ERROR){
         sendReturnMessage();
         return;
-    }
+    }    
     // Process
     switch(cmdType){
     // _PH_ ADD COMMAND PROCESSING CODE IF NEED
     case COMMAND_TYPE_CLIENT_ADD:
+        SERVER_MSG("---- Server Command Processing (Add User) ... ----");
     [[clang::fallthrough]]; // Fallthrough
     case COMMAND_TYPE_CLIENT_REGISTER:
     {
+        SERVER_MSG("---- Server Command Processing (Client Register)... ----");
         QJsonArray jA;
         if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
@@ -280,9 +282,11 @@ void MyTcpSocket::process(){
     }
         break;
     case COMMAND_TYPE_CLIENT_REMOVE:
+        SERVER_MSG("---- Server Command Processing (User Remove) ... ----");
         bookLogs = new BookLog[1]; // FallThrough
     case COMMAND_TYPE_CLIENT_EDIT:
     {
+        SERVER_MSG("---- Server Command Processing (User Edit Data) ... ----");
         QJsonArray jA;
         if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
@@ -306,6 +310,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_CLIENT_READ:
     {
+        SERVER_MSG("---- Server Command Processing (User Read) ... ----");
         if(requestData.value(READ_FILE_RULES_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_USER_JSON_CORRUPTED;
             break;
@@ -318,6 +323,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_CLIENT_LOGIN:
     {
+        SERVER_MSG("---- Server Command Processing (User Login) ... ----");
         QJsonArray jA;
         if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
@@ -337,6 +343,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_CLIENT_LOGOUT:
     {
+        SERVER_MSG("---- Server Command Processing (User Logout) ... ----");
         if(requestData.value(USER_PARAMETERS_USER_ID) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
             break;
@@ -372,6 +379,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_CLIENT_ACTIVITY:
     {
+        SERVER_MSG("---- Server Command Processing (Activity Update)... ----");
         if(requestData.value(USER_PARAMETERS_USER_ID) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
             break;
@@ -382,7 +390,8 @@ void MyTcpSocket::process(){
     }
         break;
     case COMMAND_TYPE_BOOK_ADD:
-    {        
+    {
+        SERVER_MSG("---- Server Command Processing (Book Add) ... ----");
         QJsonArray jA;
         if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT;
@@ -427,7 +436,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_REMOVE:
     {
-
+        SERVER_MSG("---- Server Command Processing (Book Remove) ... ----");
         QJsonArray jA;
         if(requestData.value(USER_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_USER_NOT_SENT;
@@ -502,6 +511,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_EDIT:
     {
+        SERVER_MSG("---- Server Command Processing (Book Edit Data) ... ----");
         QJsonArray jA;
         if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_JSON_BOOK_NOT_SENT;
@@ -525,6 +535,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_READ:
     {
+        SERVER_MSG("---- Server Command Processing (Book Read) ... ----");
         if(requestData.value(READ_FILE_RULES_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_READ_FILES_RULES_JSON_CORRUPTED;
             break;
@@ -537,6 +548,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_RETURN:
     {
+        SERVER_MSG("---- Server Command Processing (Book Return) ... ----");
         bookLogs = new BookLog[1];
         QJsonArray jA;
         if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
@@ -590,6 +602,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_RESERVE:
     {
+        SERVER_MSG("---- Server Command Processing (Book Reserve) ... ----");
         bookLogs = new BookLog[1];
         QJsonArray jA;
         if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
@@ -643,6 +656,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_CHECKOUT:
     {
+        SERVER_MSG("---- Server Command Processing (Book CheckOut) ... ----");
         bookLogs = new BookLog[1];
         QJsonArray jA;
         if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
@@ -712,6 +726,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_COMMENT_REMOVE:
     {
+        SERVER_MSG("---- Server Command Processing (Book Comment Remove) ... ----");
         bookLogs = new BookLog[1];
         QJsonArray jA;
         if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
@@ -772,6 +787,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_COMMENT_ADD_EDIT:
     {
+        SERVER_MSG("---- Server Command Processing (Book Comment Add/Edit) ... ----");
         bookLogs = new BookLog[1];
         QJsonArray jA;
         if(requestData.value(BOOK_JSON_KEY_TEXT) == QJsonValue::Undefined){
@@ -833,6 +849,7 @@ void MyTcpSocket::process(){
         break;
     case COMMAND_TYPE_BOOK_LOG_READ:
     {
+        SERVER_MSG("---- Server Command Processing (Log Read) ... ----");
         if(requestData.value(READ_FILE_RULES_JSON_KEY_TEXT) == QJsonValue::Undefined){
             returnErrorType = RETURN_ERROR_READ_FILES_RULES_JSON_CORRUPTED;
             break;
@@ -847,6 +864,7 @@ void MyTcpSocket::process(){
         break;
     }
     tcpSocketStat = TCP_SOCKET_FINISHED; // _PH_ Need for work with threats
+    SERVER_MSG("---- Server Command Processing Finished (Success) ... ----");
     sendReturnMessage();
 }
 
